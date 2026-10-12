@@ -1,0 +1,19 @@
+# Unity generated files
+/Library/
+/Temp/
+/Obj/
+/Logs/
+/UserSettings/
+/Build/
+/Builds/
+/Assets/_Recovery/
+/Assets/_Recovery.meta
+
+# Local working copies and checks
+/tmp/
+/%SystemDrive%/
+*.csproj
+*.sln
+*.slnx
+*.pidb
+*.user

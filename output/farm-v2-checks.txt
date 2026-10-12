@@ -1,0 +1,5 @@
+Unity 6000.3.0f1
+54 contrôles réussis.
+Manette simulée via Input System. Aucun test sur matériel physique.
+Rendus URP : jour, nuit et rotation de la caméra.
+Les captures du décor n'incluent pas l'interface OnGUI.
