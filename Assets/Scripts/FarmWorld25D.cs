@@ -50,7 +50,7 @@ public sealed partial class FarmWorld25D : IDisposable
         Camera.clearFlags=CameraClearFlags.SolidColor;Camera.backgroundColor=new Color(.26f,.34f,.30f);
         Camera.depth=100;Camera.allowHDR=true;Camera.GetUniversalAdditionalCameraData().renderShadows=true;
         focus=new GameObject("Point de suivi").transform;focus.position=new Vector3(7,.3f,4.8f);focus.SetParent(root,true);
-        BuildGround();BuildVillage();BuildLandBorders();BuildLighting();BuildPlayer();BuildInterior();
+        BuildGround();BuildVillage();BuildWorkbench();BuildLandBorders();BuildLighting();BuildPlayer();BuildInterior();
         targetRenderer=GroundCard("Case visée",art.Marker,new Vector3(0,.065f,0),new Vector2(.97f,.95f));
         targetRenderer.gameObject.SetActive(false);
         state.PlotChanged+=Refresh;
@@ -218,7 +218,7 @@ public sealed partial class FarmWorld25D : IDisposable
         if(canMove&&input.x>.15f)actor.localScale=new Vector3(1,actor.localScale.y,1);
         else if(canMove&&input.x<-.15f)actor.localScale=new Vector3(-1,actor.localScale.y,1);
         playerShadow.transform.position=new Vector3(pos.x,(Indoors?0:GroundHeight(pos.x,pos.z))+.018f,pos.z-.22f);
-        UpdateCamera(delta,false);UpdateCards();UpdateLighting();
+        UpdateWorkbench();UpdateCamera(delta,false);UpdateCards();UpdateLighting();
         var t=AimedPlot;targetRenderer.gameObject.SetActive(!Indoors&&canMove&&(int)tool<4&&state.CanCultivate(t.x,t.y));
         targetRenderer.transform.position=Position(t.x,t.y)+new Vector3(0,.045f,-.475f);
         // Léger mouvement des feuilles : reste un plan vertical dans le monde 3D.

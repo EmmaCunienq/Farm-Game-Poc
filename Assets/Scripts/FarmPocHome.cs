@@ -64,6 +64,7 @@ public sealed partial class FarmPoc
     {
         if(view==View.Wheel)ActiveTool=(FarmTool)originalTool;
         if(view==View.Style)World.ApplyAppearance(Appearance);
+        if(view==View.Craft)StopCrafting();
         if(view==View.Decoration){movingFurniture=-1;if(saveDecoration)SaveGame(false);}
         view=View.Play;
     }

@@ -8,7 +8,7 @@ public sealed class FarmSaveData
     public int Version=1,Day,Money,SelectedSeed,SelectedProduct,ActiveTool;
     public int UnlockedLand;
     public double Hour;
-    public int[] Seeds,Products;
+    public int[] Seeds,Products,Crafted;
     public FarmPlot[] Plots;
     public FarmHome Home;
     public FarmAppearance Appearance;
@@ -24,6 +24,8 @@ public sealed class FarmSaveData
         if(Seeds==null||Products==null||Seeds.Length!=3||Products.Length!=3||Plots==null||Plots.Length!=FarmSimulation.Width*FarmSimulation.Height)return false;
         foreach(int count in Seeds)if(count<0||count>10000000)return false;
         foreach(int count in Products)if(count<0||count>10000000)return false;
+        if(Crafted!=null&&Crafted.Length!=0&&Crafted.Length!=FarmCrafting.Recipes.Length)return false;
+        if(Crafted!=null)foreach(int count in Crafted)if(count<0||count>10000000)return false;
         foreach(var p in Plots)
             if(p==null||p.Crop< -1||p.Crop>2||p.UsesLeft<0||p.UsesLeft>3||!Finite(p.GrowthHours)||p.GrowthHours<0||p.GrowthHours>60||!Finite(p.EmptyHours)||p.EmptyHours<0||p.WateredDay< -1||p.WateredDay>Day)return false;
         for(int i=0;i<Plots.Length;i++)

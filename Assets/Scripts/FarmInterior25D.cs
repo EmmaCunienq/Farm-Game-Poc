@@ -13,7 +13,7 @@ public sealed partial class FarmWorld25D
     MeshRenderer roomFloor;
     readonly List<MeshRenderer> roomWalls=new();
     Material[] floorMaterials,wallMaterials;
-    public string InteractionHint=>NearHouse?"Clique sur la maison pour entrer":NearExit?"Clique sur le tapis pour sortir":NearWardrobe?"Clique sur l'armoire pour te changer":NearDecorChest?"Clique sur le coffre pour décorer":Indoors?"Coffre : décoration · Armoire : personnage":"";
+    public string InteractionHint=>NearHouse?"Clique sur la maison pour entrer":NearExit?"Clique sur le tapis pour sortir":NearWardrobe?"Clique sur l'armoire pour te changer":NearDecorChest?"Clique sur le coffre pour décorer":NearWorkbench?"Clique sur l'établi pour fabriquer des objets":Indoors?"Coffre : décoration · Armoire : personnage":"";
 
     static void HomeSurface(MeshRenderer renderer,Material material)
     {

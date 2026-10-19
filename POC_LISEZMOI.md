@@ -119,6 +119,21 @@ La propriété des terrains et leur culture sont sauvegardées dans le fichier J
 
 On commence avec 45 pièces, 5 graines de carotte, 3 de radis et 2 de citrouille. Trois cultures mûres permettent de récolter immédiatement.
 
+## Établi et fabrication
+
+L'établi se trouve à gauche des champs. Approche-toi puis agis (E / A, ou clic gauche sur l'établi) pour ouvrir le catalogue. Chaque objet indique les récoltes et les pièces nécessaires, avec ce que tu possèdes ; la fabrication n'est possible que si tout est réuni. Une animation de 2,4 secondes suit : coups d'outil sur l'établi, copeaux et ingrédients qui rejoignent l'objet. Les ingrédients ne sont consommés qu'à la fin ; Échap / B interrompt sans perte.
+
+| Objet | Catégorie | Ingrédients | Vente |
+| --- | --- | --- | --- |
+| Caisse de marché | Objet | 2 radis + 3 pièces | 16 pièces |
+| Lanterne citrouille | Décoration | 1 citrouille + 1 radis | 30 pièces |
+| Couronne fleurie | Accessoire | 2 carottes + 6 pièces | 28 pièces |
+| Engrais maison | Objet | 1 carotte + 2 radis | 22 pièces |
+| Chapeau de roseaux | Accessoire | 3 radis + 5 pièces | 26 pièces |
+| Épouvantail | Décoration | 2 carottes + 1 citrouille + 6 pièces | 52 pièces |
+
+Les objets fabriqués apparaissent dans l'onglet **Objets** de l'inventaire et se vendent chez le marchand (onglet **Vendre les objets**). Ils sont conservés dans la sauvegarde. Les recettes se règlent dans le tableau Recipes de FarmCrafting.cs. L'établi utilise provisoirement l'illustration de la table ; les objets n'ont pas encore d'usage en jeu (porter un accessoire, poser une décoration, fertiliser).
+
 ## Temps et état de la terre
 
 **600 secondes réelles = 24 heures en jeu.** Le cycle tourne en continu dans l'inventaire, la décoration et l'armoire. Le menu pause l'arrête. Le soleil, la lumière ambiante, la lune et les lanternes suivent l'heure.
@@ -161,6 +176,10 @@ L'éclairage utilise les lumières 3D du renderer Universal URP, adaptées à ce
 - Assets/Scripts/FarmHomeArt.cs : découpage des atlas de mobilier, revêtements et proportions du personnage.
 - Assets/Scripts/FarmPocHome.cs : interactions, décoration, armoire, pause et sauvegarde.
 - Assets/Scripts/FarmSave.cs : fichier JSON, validation, écriture atomique et copie de secours.
+- Assets/Scripts/FarmCrafting.cs : recettes, fabrication et vente des objets.
+- Assets/Scripts/FarmPocCrafting.cs : catalogue de l'établi et animation de l'interface.
+- Assets/Scripts/FarmWorldCrafting.cs : établi dans le monde et animation de fabrication.
+- Assets/Editor/FarmCraftChecks.cs : contrôles de l'établi dans une copie isolée.
 - Assets/Editor/FarmHomeChecks.cs : contrôles fonctionnels à exécuter dans une copie isolée du projet.
 - Assets/Shaders/PaperCutout.shader : matériau éclairé des cartes.
 - Assets/Editor/FarmProjectSetup.cs : configuration URP et shaders inclus dans les builds.

@@ -101,6 +101,7 @@ public sealed partial class FarmPoc
             case FarmInteraction.Shop:OpenShop();break;
             case FarmInteraction.Wardrobe:OpenAppearance();break;
             case FarmInteraction.DecorChest:OpenDecoration();break;
+            case FarmInteraction.Workbench:OpenCrafting();break;
         }
     }
     public Vector2 MouseMovement(Vector2 manual,float delta)
@@ -163,8 +164,8 @@ public sealed partial class FarmPoc
         if(GUI.Button(new Rect(w-290,195,130,32),"Caméra ‹",button))World.RotateCamera(-15);
         if(GUI.Button(new Rect(w-150,195,130,32),"Caméra ›",button))World.RotateCamera(15);
         GUI.enabled=view==View.Play;
-        FarmInteraction context=World.Indoors?(World.NearWardrobe?FarmInteraction.Wardrobe:World.NearDecorChest?FarmInteraction.DecorChest:World.NearExit?FarmInteraction.Exit:FarmInteraction.None):World.NearHouse?FarmInteraction.House:FarmInteraction.Shop;
-        string label=context switch{FarmInteraction.House=>"Entrer dans la maison",FarmInteraction.Shop=>"Rejoindre le marchand",FarmInteraction.Wardrobe=>"Ouvrir l'armoire",FarmInteraction.DecorChest=>"Décorer la maison",FarmInteraction.Exit=>"Sortir de la maison",_=>""};
+        FarmInteraction context=World.Indoors?(World.NearWardrobe?FarmInteraction.Wardrobe:World.NearDecorChest?FarmInteraction.DecorChest:World.NearExit?FarmInteraction.Exit:FarmInteraction.None):World.NearHouse?FarmInteraction.House:World.NearWorkbench?FarmInteraction.Workbench:FarmInteraction.Shop;
+        string label=context switch{FarmInteraction.House=>"Entrer dans la maison",FarmInteraction.Shop=>"Rejoindre le marchand",FarmInteraction.Wardrobe=>"Ouvrir l'armoire",FarmInteraction.DecorChest=>"Décorer la maison",FarmInteraction.Exit=>"Sortir de la maison",FarmInteraction.Workbench=>"Utiliser l'établi",_=>""};
         if(label.Length>0&&GUI.Button(new Rect(20,158,292,36),label,button))StartMouseInteraction(context);
         if(view==View.Play)for(int i=0;i<FarmLand.Lots.Length;i++)
         {

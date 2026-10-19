@@ -2,7 +2,7 @@ using UnityEngine;
 
 public sealed partial class FarmPoc : MonoBehaviour
 {
-    enum View { Play, Wheel, Inventory, Shop, Sleep, Style, Decoration, Pause, LoadConfirm, QuitConfirm, Land }
+    enum View { Play, Wheel, Inventory, Shop, Sleep, Style, Decoration, Pause, LoadConfirm, QuitConfirm, Land, Craft }
     public FarmSimulation State { get; private set; }
     public FarmWorld25D World { get; private set; }
     public FarmTool ActiveTool { get; private set; }=FarmTool.Hoe;
@@ -44,7 +44,7 @@ public sealed partial class FarmPoc : MonoBehaviour
     {
         var frame=controls.Read(Time.unscaledTime);ProcessInput(frame);
         if(IsPaused){CancelMouseNavigation();return;}
-        State.AdvanceRealSeconds(Time.unscaledDeltaTime);
+        State.AdvanceRealSeconds(Time.unscaledDeltaTime);UpdateCrafting(Time.unscaledDeltaTime);
         UpdateMouseAim(frame);var movement=MouseMovement(frame.Move,Time.deltaTime);
         World.Update(Time.deltaTime,movement,view==View.Play,frame.CameraStick,frame.Orbit,ActiveTool);
         if(view==View.Play&&Time.unscaledTime>=nextAutosave){SaveGame(false);nextAutosave=Time.unscaledTime+60;}
@@ -70,13 +70,13 @@ public sealed partial class FarmPoc : MonoBehaviour
                 if(f.Confirm||f.Wheel){ActiveTool=(FarmTool)wheelCursor;view=View.Play;}
                 break;
             case View.Inventory:
-                if(f.Tab!=0){tab=(tab+f.Tab+3)%3;cursor=0;}
+                if(f.Tab!=0){tab=(tab+f.Tab+4)%4;cursor=0;}
                 MoveCursor(f.Navigate,Items().Length);ChangeQuantity(f.Quantity);
                 if(f.Confirm)InventoryAction();
                 break;
             case View.Shop:
-                if(f.Tab!=0){shopTab=(shopTab+f.Tab+2)%2;cursor=0;quantity=1;}
-                MoveCursor(f.Navigate,3);ChangeQuantity(f.Quantity);
+                if(f.Tab!=0){shopTab=(shopTab+f.Tab+3)%3;cursor=0;quantity=1;}
+                MoveCursor(f.Navigate,ShopItems().Length);ChangeQuantity(f.Quantity);
                 if(f.Confirm)ShopAction();
                 break;
             case View.Sleep: if(f.Confirm)Sleep();break;
@@ -90,6 +90,7 @@ public sealed partial class FarmPoc : MonoBehaviour
             case View.Land:
                 if(f.Navigate!=Vector2Int.zero)landCursor=(landCursor+(f.Navigate.y!=0?-f.Navigate.y:f.Navigate.x)+FarmLand.Lots.Length)%FarmLand.Lots.Length;
                 if(f.Confirm)LandAction();break;
+            case View.Craft:ProcessCrafting(f);break;
         }
     }
     void UseTool()
@@ -98,6 +99,8 @@ public sealed partial class FarmPoc : MonoBehaviour
         if(World.NearExit){World.SetIndoors(false);SaveGame(false);return;}
         if(World.NearWardrobe){OpenAppearance();return;}
         if(World.NearDecorChest){OpenDecoration();return;}
+        // Près des champs, l'outil reste prioritaire sur l'établi.
+        var aimed=World.Target();if(World.NearWorkbench&&!State.CanCultivate(aimed.x,aimed.y)){OpenCrafting();return;}
         if(ActiveTool==FarmTool.House||ActiveTool==FarmTool.Wardrobe)
         {
             if(!World.Indoors){Say("Entre dans la maison par la porte pour accéder au coffre et à l'armoire.");return;}
@@ -132,14 +135,21 @@ public sealed partial class FarmPoc : MonoBehaviour
     {
         if(count==0){cursor=0;return;}
         if(nav.x!=0)cursor=(cursor+nav.x+count)%count;
-        else if(nav.y!=0)cursor=(cursor-nav.y*3+count)%count;
+        else if(nav.y!=0)cursor=(cursor-nav.y*Columns(count)+count)%count;
         cursor=Mathf.Clamp(cursor,0,count-1);
     }
     void ChangeQuantity(int change)=>quantity=Mathf.Clamp(quantity+change,1,99);
-    int[] Items()=>tab==0?new[]{0,1,2}:tab==1?new[]{3,4,5}:new[]{0,1,2,3,4,5};
+    int[] Items()=>tab==0?new[]{0,1,2}:tab==1?new[]{3,4,5}:tab==2?ObjectItems:new[]{0,1,2,3,4,5,6,7,8,9,10,11};
+    int[] ShopItems()=>shopTab==0?new[]{0,1,2}:shopTab==1?new[]{3,4,5}:ObjectItems;
     void InventoryAction()
     {
         int id=Items()[cursor],kind=id%3;
+        if(id>=6)
+        {
+            if(World.NearShop){State.SellCrafted(id-6,quantity,out var sold);Say(sold);}
+            else Say(ItemName(id)+" : rejoins le marchand pour le vendre.");
+            return;
+        }
         if(id<3){State.SelectedSeed=kind;ActiveTool=FarmTool.Seeds;view=View.Play;Say("Graines choisies : "+FarmSimulation.Crops[kind].Name+". Vise une case bêchée pour planter.");}
         else
         {
@@ -153,7 +163,8 @@ public sealed partial class FarmPoc : MonoBehaviour
         if(!World.NearShop){view=View.Play;Say("Le marchand est trop loin.");return;}
         string message;
         if(shopTab==0)State.BuySeeds(cursor,quantity,out message);
-        else {State.SelectedProduct=cursor;State.Sell(cursor,quantity,out message);}
+        else if(shopTab==1){State.SelectedProduct=cursor;State.Sell(cursor,quantity,out message);}
+        else State.SellCrafted(cursor,quantity,out message);
         Say(message);
     }
     void Sleep(){State.SkipToNextMorning();World.UpdateLighting();view=View.Play;SaveGame(false);Say("Jour "+State.Day+" — 08:00. Les cultures ont continué à pousser.");}
@@ -190,6 +201,7 @@ public sealed partial class FarmPoc : MonoBehaviour
             if(view==View.Style)DrawAppearance(w,h);
             if(view==View.Decoration)DrawDecoration(w,h);
             if(view==View.Land)DrawLand(w,h);
+            if(view==View.Craft)DrawCrafting(w,h);
             if(IsPaused)DrawPause(w,h);
         }
         if(Time.unscaledTime<toastUntil)
@@ -206,7 +218,7 @@ public sealed partial class FarmPoc : MonoBehaviour
         GUI.Box(new Rect(20,20,292,129),GUIContent.none,panel);
         GUI.Label(new Rect(36,27,268,30),"LE PETIT MATIN",title);
         GUI.Label(new Rect(36,62,260,26),"JOUR "+State.Day+"  /  "+State.ClockText+(State.Hour>=6&&State.Hour<19?"  ·  JOUR":"  ·  NUIT"),text);
-        GUI.Label(new Rect(36,91,260,23),State.Money+" pièces   ·   "+State.TotalProducts+" récoltes",small);
+        GUI.Label(new Rect(36,91,260,23),State.Money+" pièces  ·  "+State.TotalProducts+" récoltes  ·  "+State.TotalCrafted+" objets",small);
         GUI.Label(new Rect(36,116,260,23),"Graines : "+FarmSimulation.Crops[State.SelectedSeed].Name+" × "+State.Seeds[State.SelectedSeed],small);
         GUI.Box(new Rect(w-290,20,270,121),GUIContent.none,panel);
         GUI.Label(new Rect(w-274,31,242,104),controls.UsingGamepad?
@@ -266,39 +278,35 @@ public sealed partial class FarmPoc : MonoBehaviour
         bool shop=view==View.Shop;var r=new Rect(w/2-400,h/2-245,800,490);
         GUI.Box(r,GUIContent.none,panel);GUI.Label(new Rect(r.x+24,r.y+18,650,33),shop?"CHEZ LE MARCHAND":"MON INVENTAIRE",title);
         if(GUI.Button(new Rect(r.xMax-62,r.y+18,38,31),"×",button)){view=View.Play;return;}
-        string[] tabs=shop?new[]{"Acheter des graines","Vendre les récoltes"}:new[]{"Graines","Récoltes","Tout"};
-        int active=shop?shopTab:tab;
+        string[] tabs=shop?new[]{"Acheter des graines","Vendre les récoltes","Vendre les objets"}:new[]{"Graines","Récoltes","Objets","Tout"};
+        int active=shop?shopTab:tab;float tabWidth=(752-(tabs.Length-1)*10f)/tabs.Length;
         for(int i=0;i<tabs.Length;i++)
-            if(GUI.Button(new Rect(r.x+24+i*245,r.y+68,235,38),tabs[i],active==i?selected:button))
+            if(GUI.Button(new Rect(r.x+24+i*(tabWidth+10),r.y+68,tabWidth,38),tabs[i],active==i?selected:button))
             {if(shop)shopTab=i;else tab=i;cursor=0;quantity=1;}
-        int[] list=shop?(shopTab==0?new[]{0,1,2}:new[]{3,4,5}):Items();
+        int[] list=shop?ShopItems():Items();
+        int columns=Columns(list.Length);bool compact=list.Length>6;
+        float cellWidth=(752-(columns-1)*10f)/columns,cellHeight=compact?68:98;
         cursor=Mathf.Clamp(cursor,0,list.Length-1);
         for(int i=0;i<list.Length;i++)
         {
-            int item=list[i],kind=item%3;var cell=new Rect(r.x+24+(i%3)*245,r.y+124+(i/3)*108,235,98);
-            int count=item<3?State.Seeds[kind]:State.Products[kind];
+            int item=list[i];var cell=new Rect(r.x+24+(i%columns)*(cellWidth+10),r.y+124+(i/columns)*(cellHeight+10),cellWidth,cellHeight);
             if(GUI.Button(cell,"",i==cursor?selected:button))cursor=i;
-            CropIcon(new Rect(cell.x+10,cell.y+12,64,67),kind);
-            var style=i==cursor?text:new GUIStyle(text);if(i!=cursor)style.normal.textColor=new Color(.20f,.23f,.18f);
-            GUI.Label(new Rect(cell.x+82,cell.y+12,145,69),(item<3?"Graines":"Récolte")+"\n"+FarmSimulation.Crops[kind].Name+"\n× "+count,style);
+            float icon=cellHeight*.66f;SpriteIcon(new Rect(cell.x+10,cell.y+(cellHeight-icon)/2,icon,icon),ItemSprite(item));
+            var style=new GUIStyle(compact?small:text);style.normal.textColor=i==cursor?paper:new Color(.20f,.23f,.18f);
+            GUI.Label(new Rect(cell.x+icon+18,cell.y+(compact?6:12),cell.width-icon-24,cellHeight-12),ItemCategory(item)+"\n"+ItemName(item)+"\n× "+ItemCount(item),style);
         }
         int id=list[cursor],selectedKind=id%3;var def=FarmSimulation.Crops[selectedKind];
         string info=id<3?"Pousse : "+def.GrowthHours+" h   ·   "+def.Yield+" produit(s) par récolte   ·   Graine : "+def.SeedPrice+" pièces":
-            "Vente : "+def.SalePrice+" pièces par produit   ·   Total possédé : "+State.Products[selectedKind];
+            id<6?"Vente : "+def.SalePrice+" pièces par produit   ·   Total possédé : "+State.Products[selectedKind]:
+            FarmCrafting.Recipes[id-6].Description+"   ·   Vente : "+FarmCrafting.Recipes[id-6].SalePrice+" pièces";
         GUI.Label(new Rect(r.x+24,r.y+350,752,29),info,small);
         GUI.Label(new Rect(r.x+24,r.y+395,100,28),"Quantité",text);
         if(GUI.Button(new Rect(r.x+128,r.y+386,38,38),"−",button))ChangeQuantity(-1);
         GUI.Label(new Rect(r.x+172,r.y+391,55,29),quantity.ToString(),center);
         if(GUI.Button(new Rect(r.x+232,r.y+386,38,38),"+",button))ChangeQuantity(1);
-        string action=shop?(shopTab==0?"Acheter "+quantity:"Vendre "+quantity):id<3?"Équiper les graines":World.NearShop?"Vendre "+quantity:"Choisir pour la vente";
+        string action=shop?(shopTab==0?"Acheter "+quantity:"Vendre "+quantity):id<3?"Équiper les graines":World.NearShop?"Vendre "+quantity:id<6?"Choisir pour la vente":"À vendre chez le marchand";
         if(GUI.Button(new Rect(r.x+330,r.y+382,446,48),action+"  ·  A / E",selected)){if(shop)ShopAction();else InventoryAction();}
         GUI.Label(new Rect(r.x+24,r.y+448,752,26),"Stick / flèches : naviguer   ·   LB/RB ou Page↑/↓ : onglets   ·   LT/RT ou −/+ : quantité",small);
-    }
-    void CropIcon(Rect target,int kind)
-    {
-        var sprite=art.CropSprite(kind);var uv=new Rect(sprite.rect.x/sprite.texture.width,sprite.rect.y/sprite.texture.height,sprite.rect.width/sprite.texture.width,sprite.rect.height/sprite.texture.height);
-        float ratio=sprite.rect.width/sprite.rect.height;float width=Mathf.Min(target.width,target.height*ratio),height=width/ratio;
-        var rect=new Rect(target.center.x-width/2,target.center.y-height/2,width,height);GUI.DrawTextureWithTexCoords(rect,sprite.texture,uv,true);
     }
     void DrawSleep(float w,float h)
     {

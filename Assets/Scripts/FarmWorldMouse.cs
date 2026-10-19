@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-public enum FarmInteraction { None, House, Shop, Wardrobe, DecorChest, Exit }
+public enum FarmInteraction { None, House, Shop, Wardrobe, DecorChest, Exit, Workbench }
 
 public sealed partial class FarmWorld25D
 {
@@ -45,16 +45,18 @@ public sealed partial class FarmWorld25D
         void Pick(MeshRenderer renderer,FarmInteraction interaction)
         {if(HitPaper(renderer,ray,out float distance)&&distance<closest){result=interaction;closest=distance;}}
         if(Indoors){Pick(wardrobeIllustration,FarmInteraction.Wardrobe);Pick(chestIllustration,FarmInteraction.DecorChest);Pick(exitIllustration,FarmInteraction.Exit);}
-        else{Pick(house,FarmInteraction.House);Pick(shopIllustration,FarmInteraction.Shop);}
+        else{Pick(house,FarmInteraction.House);Pick(shopIllustration,FarmInteraction.Shop);Pick(workbenchIllustration,FarmInteraction.Workbench);}
         return result;
     }
     public Vector2 ApproachPoint(FarmInteraction interaction)=>interaction switch {
         FarmInteraction.House=>new Vector2(2,5.9f),FarmInteraction.Shop=>new Vector2(11.8f,5.9f),
+        // À côté de l'établi, pour ne pas le masquer pendant la fabrication.
+        FarmInteraction.Workbench=>WorkbenchPoint+new Vector2(.95f,-.25f),
         FarmInteraction.Wardrobe=>new Vector2(HomeOffsetX+.5f,4.95f),FarmInteraction.DecorChest=>new Vector2(HomeOffsetX+8.5f,4.95f),
         _=>new Vector2(HomeOffsetX+4.5f,.65f)
     };
     public bool NearInteraction(FarmInteraction interaction)=>interaction switch {
-        FarmInteraction.House=>NearHouse,FarmInteraction.Shop=>NearShop,FarmInteraction.Wardrobe=>NearWardrobe,FarmInteraction.DecorChest=>NearDecorChest,FarmInteraction.Exit=>NearExit,_=>false
+        FarmInteraction.House=>NearHouse,FarmInteraction.Shop=>NearShop,FarmInteraction.Wardrobe=>NearWardrobe,FarmInteraction.DecorChest=>NearDecorChest,FarmInteraction.Exit=>NearExit,FarmInteraction.Workbench=>NearWorkbench,_=>false
     };
     public bool CanStand(Vector2 p)
     {
