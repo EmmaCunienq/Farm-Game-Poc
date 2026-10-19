@@ -1,8 +1,8 @@
 using UnityEngine;
 
-public sealed class FarmPoc : MonoBehaviour
+public sealed partial class FarmPoc : MonoBehaviour
 {
-    enum View { Play, Wheel, Inventory, Shop, Sleep, Style }
+    enum View { Play, Wheel, Inventory, Shop, Sleep, Style, Decoration, Pause, LoadConfirm, QuitConfirm, Land }
     public FarmSimulation State { get; private set; }
     public FarmWorld25D World { get; private set; }
     public FarmTool ActiveTool { get; private set; }=FarmTool.Hoe;
@@ -15,7 +15,7 @@ public sealed class FarmPoc : MonoBehaviour
     View view;
     Vector2 lastWheelMouse;
     bool wheelMouseReady;
-    int wheelCursor,originalTool,cursor,tab,shopTab,quantity=1,styleCursor,houseStyle,outfitStyle;
+    int wheelCursor,originalTool,cursor,tab,shopTab,quantity=1;
     string toast;
     float toastUntil;
     GUIStyle panel,title,text,small,button,selected,center;
@@ -26,37 +26,43 @@ public sealed class FarmPoc : MonoBehaviour
         "Planter les graines choisies dans l'inventaire.",
         "Accélérer la pousse une fois par jour.",
         "Récolter ; vendre le produit choisi près du marchand.",
-        "Choisir une teinte pour la maison.",
-        "Choisir une teinte pour la tenue."
+        "Entrer par la porte ; décorer la pièce depuis l'intérieur.",
+        "Choisir ses traits et ses vêtements dans l'armoire."
     };
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Launch(){if(FindFirstObjectByType<FarmPoc>()==null)new GameObject("Farm POC").AddComponent<FarmPoc>();}
     void Awake()
     {
-        State=new FarmSimulation();controls=new FarmInput();art=new FarmArt();
+        State=new FarmSimulation();controls=new FarmInput();art=new FarmArt();InitializeSave();
         World=new FarmWorld25D(art,State,transform);
+        World.ApplyHome(Home);World.ApplyAppearance(Appearance);RestorePlayerAtLaunch();
         State.NewDay+=OnNewDay;
-        Say("Trois cultures sont prêtes : carottes, radis et citrouille. Ouvre la roue d'outils !");
+        Say(startupMessage);
     }
     void OnNewDay(int day)=>Say("Jour "+day+" : une nouvelle journée commence.");
     void Update()
     {
-        State.AdvanceRealSeconds(Time.unscaledDeltaTime);
         var frame=controls.Read(Time.unscaledTime);ProcessInput(frame);
-        World.Update(Time.deltaTime,frame.Move,view==View.Play,frame.CameraStick,frame.Orbit,ActiveTool);
+        if(IsPaused){CancelMouseNavigation();return;}
+        State.AdvanceRealSeconds(Time.unscaledDeltaTime);
+        UpdateMouseAim(frame);var movement=MouseMovement(frame.Move,Time.deltaTime);
+        World.Update(Time.deltaTime,movement,view==View.Play,frame.CameraStick,frame.Orbit,ActiveTool);
+        if(view==View.Play&&Time.unscaledTime>=nextAutosave){SaveGame(false);nextAutosave=Time.unscaledTime+60;}
     }
     public void ProcessInput(FarmInputFrame f)
     {
-        if(f.Cancel){if(view==View.Wheel)ActiveTool=(FarmTool)originalTool;view=View.Play;return;}
-        if(f.Inventory){if(view==View.Inventory)view=View.Play;else OpenInventory();return;}
+        if(f.Pause){if(IsPaused)Resume();else OpenPause();return;}
+        if(IsPaused){ProcessPause(f);return;}
+        if(f.Cancel){if(view==View.Play){OpenPause();return;}CloseView();return;}
+        if(f.Inventory&&(view==View.Play||view==View.Inventory)){if(view==View.Inventory)view=View.Play;else OpenInventory();return;}
         switch(view)
         {
             case View.Play:
-                if(f.DirectTool>=0&&f.DirectTool<6)ActiveTool=(FarmTool)f.DirectTool;
+                if(f.DirectTool>=0&&f.DirectTool<6){CancelMouseNavigation();ActiveTool=(FarmTool)f.DirectTool;}
                 if(f.Wheel){originalTool=(int)ActiveTool;wheelCursor=originalTool;wheelMouseReady=false;view=View.Wheel;return;}
                 if(f.Sleep){view=View.Sleep;return;}
                 if(f.Shop){OpenShop();return;}
-                if(f.Confirm)UseTool();
+                if(f.Confirm){CancelMouseNavigation();UseTool();}
                 break;
             case View.Wheel:
                 if(f.WheelDirection.sqrMagnitude>.16f)wheelCursor=FarmToolWheel.Select(f.WheelDirection,wheelCursor);
@@ -75,16 +81,34 @@ public sealed class FarmPoc : MonoBehaviour
                 break;
             case View.Sleep: if(f.Confirm)Sleep();break;
             case View.Style:
-                if(f.Navigate!=Vector2Int.zero)styleCursor=(styleCursor+(f.Navigate.x!=0?f.Navigate.x:-f.Navigate.y)+3)%3;
-                if(f.Confirm)ApplyStyle();
+                if(f.Navigate.y!=0)appearanceCategory=(appearanceCategory-f.Navigate.y+8)%8;
+                if(f.Navigate.x!=0)CycleAppearance(f.Navigate.x);
+                if(f.Tab!=0)appearanceCategory=(appearanceCategory+f.Tab+8)%8;
+                if(f.Confirm)ApplyAppearance();
                 break;
+            case View.Decoration:ProcessDecoration(f);break;
+            case View.Land:
+                if(f.Navigate!=Vector2Int.zero)landCursor=(landCursor+(f.Navigate.y!=0?-f.Navigate.y:f.Navigate.x)+FarmLand.Lots.Length)%FarmLand.Lots.Length;
+                if(f.Confirm)LandAction();break;
         }
     }
     void UseTool()
     {
+        if(World.NearHouse){World.SetIndoors(true);Say("Bienvenue chez toi ! Le coffre décore la pièce et l'armoire change ton personnage.");SaveGame(false);return;}
+        if(World.NearExit){World.SetIndoors(false);SaveGame(false);return;}
+        if(World.NearWardrobe){OpenAppearance();return;}
+        if(World.NearDecorChest){OpenDecoration();return;}
         if(ActiveTool==FarmTool.House||ActiveTool==FarmTool.Wardrobe)
-        { styleCursor=ActiveTool==FarmTool.House?houseStyle:outfitStyle;view=View.Style;return; }
-        var p=World.Target();string message;
+        {
+            if(!World.Indoors){Say("Entre dans la maison par la porte pour accéder au coffre et à l'armoire.");return;}
+            if(ActiveTool==FarmTool.House)OpenDecoration();else OpenAppearance();return;
+        }
+        if(World.Indoors){Say("Utilise le coffre pour décorer, l'armoire pour te changer, ou le seuil pour sortir.");return;}
+        UseFarmToolAt(World.Target());
+    }
+    void UseFarmToolAt(Vector2Int p)
+    {
+        string message;
         switch(ActiveTool)
         {
             case FarmTool.Hoe:State.Till(p.x,p.y,out message);break;
@@ -132,14 +156,7 @@ public sealed class FarmPoc : MonoBehaviour
         else {State.SelectedProduct=cursor;State.Sell(cursor,quantity,out message);}
         Say(message);
     }
-    void Sleep(){State.SkipToNextMorning();World.UpdateLighting();view=View.Play;Say("Jour "+State.Day+" — 08:00. Les cultures ont continué à pousser.");}
-    void ApplyStyle()
-    {
-        Color[] shades={Color.white,new Color(1,.84f,.73f),new Color(.83f,.94f,.87f)};
-        if(ActiveTool==FarmTool.House){houseStyle=styleCursor;World.SetHouseTint(shades[styleCursor]);}
-        else{outfitStyle=styleCursor;World.SetOutfitTint(shades[styleCursor]);}
-        view=View.Play;
-    }
+    void Sleep(){State.SkipToNextMorning();World.UpdateLighting();view=View.Play;SaveGame(false);Say("Jour "+State.Day+" — 08:00. Les cultures ont continué à pousser.");}
     void Say(string message){toast=message;toastUntil=Time.unscaledTime+4.5f;}
     void Styles()
     {
@@ -159,24 +176,30 @@ public sealed class FarmPoc : MonoBehaviour
     void OnGUI()
     {
         if(art==null||State==null)return;Styles();GUIUtility.keyboardControl=0;
+        Vector2 screenPointer=new Vector2(Event.current.mousePosition.x,Screen.height-Event.current.mousePosition.y);
         var old=GUI.matrix;var oldColor=GUI.color;
         float scale=Mathf.Min(Screen.width/1200f,Screen.height/760f);if(scale<=0)return;
         float w=Screen.width/scale,h=Screen.height/scale;GUI.matrix=Matrix4x4.Scale(new Vector3(scale,scale,1));
-        DrawHud(w,h);
+        DrawHud(w,h);DrawMouseHud(w,h);
         if(view!=View.Play)
         {
             GUI.color=new Color(0,0,0,.48f);GUI.DrawTexture(new Rect(0,0,w,h),Texture2D.whiteTexture);GUI.color=Color.white;
             if(view==View.Wheel)DrawWheel(w,h);
             if(view==View.Inventory||view==View.Shop)DrawInventory(w,h);
             if(view==View.Sleep)DrawSleep(w,h);
-            if(view==View.Style)DrawStyle(w,h);
+            if(view==View.Style)DrawAppearance(w,h);
+            if(view==View.Decoration)DrawDecoration(w,h);
+            if(view==View.Land)DrawLand(w,h);
+            if(IsPaused)DrawPause(w,h);
         }
         if(Time.unscaledTime<toastUntil)
         {
-            var r=new Rect(w/2-390,h-167,780,44);GUI.Box(r,GUIContent.none,panel);
-            GUI.Label(new Rect(r.x+14,r.y+10,r.width-28,30),toast,small);
+            var r=new Rect(w/2-280,20,560,50);GUI.Box(r,GUIContent.none,panel);
+            GUI.Label(new Rect(r.x+14,r.y+8,r.width-28,36),toast,small);
         }
         GUI.color=oldColor;GUI.matrix=old;
+        if(Event.current.type==EventType.MouseDown&&(Event.current.button==0||Event.current.button==1)&&GUIUtility.hotControl==0)
+        {if(ProcessPointerClick(screenPointer,Event.current.button==1))Event.current.Use();}
     }
     void DrawHud(float w,float h)
     {
@@ -187,26 +210,32 @@ public sealed class FarmPoc : MonoBehaviour
         GUI.Label(new Rect(36,116,260,23),"Graines : "+FarmSimulation.Crops[State.SelectedSeed].Name+" × "+State.Seeds[State.SelectedSeed],small);
         GUI.Box(new Rect(w-290,20,270,121),GUIContent.none,panel);
         GUI.Label(new Rect(w-274,31,242,104),controls.UsingGamepad?
-            "Stick gauche : se déplacer\nA / Croix : agir ou valider\nX / Carré : roue d'outils\nY / Triangle : inventaire\nRB / R1 : marchand   ·   Start : dormir\nLT / L2 + stick droit : caméra":
-            "ZQSD / WASD / flèches : se déplacer\nE / Espace : agir   ·   Tab : roue\nI : inventaire   ·   B : marchand\nN : dormir   ·   Échap : fermer\nAlt + C / V : tourner la caméra",small);
+            "Stick gauche : se déplacer\nA / Croix : agir ou valider\nX / Carré : roue d'outils\nY / Triangle : inventaire\nRB / R1 : marchand   ·   Start : pause\nLT / L2 + stick droit : caméra":
+            "Clic gauche : se déplacer / interagir\nClic droit : utiliser l'outil choisi\nRoue : choisir un outil\nParcelles : agrandir la ferme\nMolette maintenue : tourner la caméra\nClic droit dans un menu : fermer",small);
+        bool enabled=GUI.enabled;GUI.enabled=!IsPaused;
+        if(GUI.Button(new Rect(w-130,151,110,32),"Pause",button))OpenPause();
         float start=w/2-360;
         GUI.Box(new Rect(start,h-103,720,83),GUIContent.none,panel);
         GUI.Label(new Rect(start+16,h-95,215,28),"OUTIL · "+toolNames[(int)ActiveTool],text);
         string detail=ActiveTool==FarmTool.Seeds?FarmSimulation.Crops[State.SelectedSeed].Name+" · "+State.Seeds[State.SelectedSeed]+" graines":
             ActiveTool==FarmTool.Basket?"Vente : "+FarmSimulation.Crops[State.SelectedProduct].Name+" × "+quantity:"";
         GUI.Label(new Rect(start+16,h-65,215,30),detail,small);
+        GUI.enabled=view==View.Play;
         if(GUI.Button(new Rect(start+237,h-89,148,52),"Roue\nTab / X",button)){originalTool=(int)ActiveTool;wheelCursor=originalTool;wheelMouseReady=false;view=View.Wheel;}
         if(GUI.Button(new Rect(start+394,h-89,148,52),"Inventaire\nI / Y",button))OpenInventory();
-        if(GUI.Button(new Rect(start+551,h-89,153,52),"Lendemain\nN / Start",button))view=View.Sleep;
+        if(GUI.Button(new Rect(start+551,h-89,153,52),"Lendemain\nN",button))view=View.Sleep;
+        GUI.enabled=enabled;
         if(view==View.Play)
         {
-            var p=World.Target();
-            if(FarmSimulation.Inside(p.x,p.y)&&FarmSimulation.Cultivable(p.x,p.y))
+            var p=World.AimedPlot;
+            string hint=World.InteractionHint;
+            if(hint.Length>0){GUI.Box(new Rect(20,204,292,62),GUIContent.none,panel);GUI.Label(new Rect(32,212,268,50),hint,small);}
+            else if(!World.Indoors&&FarmSimulation.Inside(p.x,p.y)&&State.CanCultivate(p.x,p.y))
             {
                 var plot=State.Plots[p.x,p.y];
                 string label=plot.Crop>=0?FarmSimulation.Crops[plot.Crop].Name+" · "+(plot.Stage==PlantStage.Mature?"prêt(e)":"pousse "+Mathf.RoundToInt((float)(plot.GrowthHours/FarmSimulation.Crops[plot.Crop].GrowthHours)*100)+" %"):
                     plot.Tilled?"Terre préparée · "+plot.UsesLeft+" récoltes restantes":"Terre naturelle · bêcher pour planter";
-                GUI.Box(new Rect(w/2-210,h-205,420,29),GUIContent.none,panel);GUI.Label(new Rect(w/2-195,h-202,390,23),label,small);
+                GUI.Box(new Rect(20,204,292,62),GUIContent.none,panel);GUI.Label(new Rect(32,212,268,50),label,small);
             }
         }
     }
@@ -221,6 +250,7 @@ public sealed class FarmPoc : MonoBehaviour
         }
         GUI.DrawTexture(new Rect(c.x-126,c.y-126,252,252),art.Marker.texture);
         GUI.Box(new Rect(c.x-122,c.y-70,244,140),GUIContent.none,panel);
+        if(GUI.Button(new Rect(c.x+220,c.y-250,95,32),"Fermer",button)){CloseView();return;}
         GUI.Label(new Rect(c.x-110,c.y-58,220,29),toolNames[wheelCursor],center);
         GUI.Label(new Rect(c.x-110,c.y-20,220,68),toolDescriptions[wheelCursor],small);
         for(int i=0;i<6;i++)
@@ -279,16 +309,9 @@ public sealed class FarmPoc : MonoBehaviour
         if(GUI.Button(new Rect(r.x+261,r.y+166,215,45),"Annuler · B / Échap",button))view=View.Play;
         GUI.Label(new Rect(r.x+24,r.y+231,450,24),"Une journée complète dure dix minutes réelles.",small);
     }
-    void DrawStyle(float w,float h)
-    {
-        var r=new Rect(w/2-285,h/2-135,570,270);GUI.Box(r,GUIContent.none,panel);
-        GUI.Label(new Rect(r.x+24,r.y+22,520,36),ActiveTool==FarmTool.House?"LA MAISON":"L'ARMOIRE",title);
-        string[] styles={"Naturelle","Chaleureuse","Sauge"};
-        for(int i=0;i<3;i++)if(GUI.Button(new Rect(r.x+24+i*177,r.y+100,167,55),styles[i],styleCursor==i?selected:button))styleCursor=i;
-        if(GUI.Button(new Rect(r.x+24,r.y+178,522,42),"Appliquer · A / E",selected))ApplyStyle();
-    }
     void OnDestroy()
     {
+        if(IsPaused)Time.timeScale=previousTimeScale;
         if(State!=null)State.NewDay-=OnNewDay;
         if(World!=null)World.Dispose();if(art!=null)art.Dispose();
     }

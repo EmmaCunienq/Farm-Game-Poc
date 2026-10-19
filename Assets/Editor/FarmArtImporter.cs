@@ -4,7 +4,8 @@ using UnityEngine;
 // Préserve l'alpha de l'atlas et permet son découpage au démarrage.
 public sealed class FarmArtImporter : AssetPostprocessor
 {
-    static bool IsFarmArt(string path) => path == "Assets/Resources/Art/village-atlas.png" || path == "Assets/Resources/Art/clearing-ground.png" || path == "Assets/Resources/Art/extra-crops.png";
+    static readonly string[] ArtPaths={"Assets/Resources/Art/village-atlas.png","Assets/Resources/Art/clearing-ground.png","Assets/Resources/Art/extra-crops.png","Assets/Resources/Art/home-paper-atlas.png","Assets/Resources/Art/home-paper-sides.png","Assets/Resources/Art/home-painted-surfaces.png","Assets/Resources/Art/farmer-paper-parts.png"};
+    static bool IsFarmArt(string path) => System.Array.IndexOf(ArtPaths,path)>=0;
     void OnPreprocessTexture() { if (IsFarmArt(assetPath)) Configure((TextureImporter)assetImporter); }
     static void Configure(TextureImporter importer)
     {
@@ -23,7 +24,7 @@ public sealed class FarmArtImporter : AssetPostprocessor
     static void EnsureImported()
     {
         EditorApplication.delayCall += () => {
-            foreach (var path in new[] { "Assets/Resources/Art/village-atlas.png", "Assets/Resources/Art/clearing-ground.png", "Assets/Resources/Art/extra-crops.png" }) {
+            foreach (var path in ArtPaths) {
                 var importer = AssetImporter.GetAtPath(path) as TextureImporter;
                 if (importer == null) continue;
                 if (importer.textureCompression != TextureImporterCompression.Uncompressed || importer.mipmapEnabled ||

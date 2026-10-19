@@ -34,7 +34,7 @@ Depuis un coffre, choisir une catégorie (extérieur, toit, fenêtres et portes,
 - **Plateforme du POC** : PC.
 - **Contenu** : inclure aussi des versions simples de la personnalisation du personnage et de la décoration de la maison.
 - **Visuels** : illustrations originales en papier, sol 3D, caméra en perspective et éclairage dynamique URP.
-- **Contrôles** : clavier et manette.
+- **Contrôles** : souris, clavier et manette.
 - **Caméra** : caméra qui suit le personnage, choix proposé pour l’exploration de la ferme.
 - **Version Unity** : 6000.3.0f1 (Unity 6.3), URP 17.3.0, Input System 1.14.2.
 
@@ -45,6 +45,26 @@ Le workspace est accessible et les fichiers du POC sont intégrés au projet exi
 La nouvelle direction utilise des cartes illustrées verticales sur un terrain 3D avec collisions, caméra en perspective orientable, rig natif simple du fermier et éclairage URP dynamique. Les réglages d’entrée nécessitent un redémarrage de Unity après cette mise à jour.
 
 Le détail des commandes et les limites du prototype sont dans POC_LISEZMOI.md. Les rendus du décor et le bilan des contrôles Unity de cette version sont dans output. La manette a été simulée via Input System ; aucun contrôle sur matériel physique n’a été effectué.
+
+## Maison, personnage et sauvegarde — branche dev
+
+Le prototype permet désormais d'entrer dans une pièce depuis la porte et de ressortir par le seuil. Le coffre ouvre un catalogue de huit meubles et objets, avec pose sur une grille, rotation, déplacement et retrait. Trois papiers peints et trois sols peuvent être appliqués à la pièce. Le mobilier possède des collisions ; l'entrée, l'armoire et le coffre ont des emplacements réservés.
+
+L'armoire propose peau, coiffure, couleur des cheveux, yeux, bouche, haut, bas et chaussures, avec aperçu, validation et annulation. Le personnage utilise désormais des pièces peintes et composées sur un rig papier. Les éléments restent disponibles gratuitement pour le POC.
+
+Échap / Start ouvre un menu pause qui arrête le temps et les déplacements. Le menu propose sauvegarde, chargement, récupération de la copie de secours, lendemain et sauvegarde avant fermeture. Le fichier JSON local conserve la ferme, le personnage et la décoration entre les lancements ; il se charge au démarrage et s'écrit automatiquement chaque minute en exploration et aux transitions importantes. Les sauvegardes invalides sont refusées.
+
+## Extensions de terrain et commandes souris
+
+Trois nouvelles parcelles peuvent être achetées avec des pièces : sud (30 pièces, 14 cases), est (60 pièces, 8 cases) et nord (90 pièces, 12 cases). Elles sont labourables après achat, puis acceptent toute la boucle de culture. Le fichier de sauvegarde conserve la propriété ; les anciens fichiers restent lisibles avec ces extensions verrouillées.
+
+Le jeu peut se parcourir à la souris : clic gauche pour marcher / interagir, clic droit pour utiliser l'outil avec approche automatique. Les trajets contournent les collisions physiques sur une grille A*, y compris les meubles déplacés dans la maison. Les achats, l'inventaire, la décoration, l'armoire, la pause, le marchand et le lendemain restent accessibles par boutons. Les commandes clavier et manette sont conservées.
+
+## Direction artistique corrigée : intérieur et personnage
+
+Le mobilier en volumes primitifs et le personnage géométrique ont été remplacés par des illustrations cohérentes avec l'atlas du village : contours encre brune, gouache texturée, bois miel et tissus sauge / terracotta. L'intérieur combine des plans peints, des silhouettes 2D verticales et des colliders invisibles. La rotation du mobilier choisit une vue illustrée de face ou de côté plutôt que de tourner un modèle volumique.
+
+Les atlas sont home-paper-atlas.png, home-paper-sides.png, home-painted-surfaces.png et farmer-paper-parts.png, dans Assets/Resources/Art. Ils ont été créés avec l'outil intégré imagegen à partir du style de village-atlas.png. Le personnage garde la personnalisation, avec proportions communes entre le monde et l'aperçu, et une animation native plus douce.
 
 ## Correction après retour utilisateur
 

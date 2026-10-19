@@ -39,9 +39,11 @@ public sealed class FarmSimulation
     public int Day { get; private set; }=1;
     public double Hour { get; private set; }=8;
     public int Money { get; private set; }=45;
+    public int UnlockedLand { get; private set; }
     public int SelectedSeed, SelectedProduct;
     public event Action<int,int> PlotChanged;
     public event Action<int> NewDay;
+    public event Action LandChanged;
 
     public FarmSimulation(bool demo=true)
     {
@@ -52,17 +54,28 @@ public sealed class FarmSimulation
     }
     public static bool Inside(int x,int z)=>x>=0&&z>=0&&x<Width&&z<Height;
     public static bool Cultivable(int x,int z)=>x>=3&&x<=9&&z>=2&&z<=6;
+    public bool CanCultivate(int x,int z)=>FarmLand.Cultivable(x,z,UnlockedLand);
+    public bool OwnsLand(int lot)=>lot>=0&&lot<FarmLand.Lots.Length&&(UnlockedLand&(1<<lot))!=0;
+    public bool BuyLand(int lot,out string message)
+    {
+        if(lot<0||lot>=FarmLand.Lots.Length){message="Parcelle inconnue.";return false;}
+        if(OwnsLand(lot)){message="Cette parcelle t'appartient déjà.";return false;}
+        var definition=FarmLand.Lots[lot];
+        if(Money<definition.Price){message="Il manque "+(definition.Price-Money)+" pièces pour cette parcelle.";return false;}
+        Money-=definition.Price;UnlockedLand|=1<<lot;LandChanged?.Invoke();
+        message=definition.Name+" achetée : "+definition.Cells+" nouvelles cases à labourer !";return true;
+    }
     void Changed(int x,int z)=>PlotChanged?.Invoke(x,z);
     public bool Till(int x,int z,out string message)
     {
-        if(!Cultivable(x,z)){message="La parcelle cultivable se trouve au centre de la ferme.";return false;}
+        if(!CanCultivate(x,z)){message=FarmLand.At(x,z)>=0?"Achète cette parcelle avant de la labourer.":"Cette terre n'est pas cultivable.";return false;}
         var p=Plots[x,z];if(p.Crop>=0){message="Cette case contient déjà une culture.";return false;}
         p.Tilled=true;p.UsesLeft=HarvestsPerTilling;p.EmptyHours=0;Changed(x,z);
         message="Terre préparée pour trois récoltes.";return true;
     }
     public bool Plant(int x,int z,out string message)
     {
-        if(!Inside(x,z)){message="Vise une case de la parcelle.";return false;}
+        if(!Inside(x,z)||!CanCultivate(x,z)){message="Vise une case d'une parcelle qui t'appartient.";return false;}
         var p=Plots[x,z];if(!p.Tilled){message="Bêche cette case avant de planter.";return false;}
         if(p.Crop>=0){message="Cette case contient déjà une culture.";return false;}
         if(Seeds[SelectedSeed]<1){message="Plus de graines de "+Crops[SelectedSeed].Name.ToLower()+".";return false;}
@@ -126,6 +139,25 @@ public sealed class FarmSimulation
         }
     }
     public void SkipToNextMorning()=>AdvanceHours(24-Hour+8);
+    public void Export(FarmSaveData save)
+    {
+        save.Day=Day;save.Hour=Hour;save.Money=Money;save.SelectedSeed=SelectedSeed;save.SelectedProduct=SelectedProduct;
+        save.UnlockedLand=UnlockedLand;
+        save.Seeds=(int[])Seeds.Clone();save.Products=(int[])Products.Clone();
+        save.Plots=new FarmPlot[Width*Height];
+        for(int z=0;z<Height;z++)for(int x=0;x<Width;x++)
+        {
+            var p=Plots[x,z];save.Plots[z*Width+x]=new FarmPlot{Tilled=p.Tilled,UsesLeft=p.UsesLeft,EmptyHours=p.EmptyHours,GrowthHours=p.GrowthHours,Crop=p.Crop,WateredDay=p.WateredDay};
+        }
+    }
+    public void Restore(FarmSaveData save)
+    {
+        if(save==null||!save.Valid())throw new ArgumentException("Sauvegarde invalide.");
+        Day=save.Day;Hour=save.Hour;Money=save.Money;SelectedSeed=save.SelectedSeed;SelectedProduct=save.SelectedProduct;
+        UnlockedLand=save.UnlockedLand;LandChanged?.Invoke();
+        Array.Copy(save.Seeds,Seeds,3);Array.Copy(save.Products,Products,3);
+        for(int z=0;z<Height;z++)for(int x=0;x<Width;x++){var p=save.Plots[z*Width+x];Plots[x,z]=new FarmPlot{Tilled=p.Tilled,UsesLeft=p.UsesLeft,EmptyHours=p.EmptyHours,GrowthHours=p.GrowthHours,Crop=p.Crop,WateredDay=p.WateredDay};Changed(x,z);}
+    }
     public int TotalProducts { get { int sum=0;foreach(int count in Products)sum+=count;return sum; } }
     public string ClockText { get { int minutes=(int)(Hour*60);return (minutes/60).ToString("00")+":"+(minutes%60).ToString("00"); } }
 }

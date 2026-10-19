@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
-public sealed class FarmWorld25D : IDisposable
+public sealed partial class FarmWorld25D : IDisposable
 {
     readonly FarmArt art;
     readonly FarmSimulation state;
@@ -30,7 +30,7 @@ public sealed class FarmWorld25D : IDisposable
     public Vector2 Facing { get; private set; }=Vector2.up;
     public float LastMoveMagnitude { get; private set; }
     public FarmSimulation State=>state;
-    public bool NearShop=>Vector2.Distance(new Vector2(Player.position.x,Player.position.z),new Vector2(11.8f,7.2f))<3.2f;
+    public bool NearShop=>!Indoors&&Vector2.Distance(new Vector2(Player.position.x,Player.position.z),new Vector2(11.8f,7.2f))<3.2f;
     public static Vector3 Position(int x,int z)=>new Vector3(x,GroundHeight(x,z)+.025f,z);
     public static float GroundHeight(float x,float z)
     {
@@ -50,7 +50,7 @@ public sealed class FarmWorld25D : IDisposable
         Camera.clearFlags=CameraClearFlags.SolidColor;Camera.backgroundColor=new Color(.26f,.34f,.30f);
         Camera.depth=100;Camera.allowHDR=true;Camera.GetUniversalAdditionalCameraData().renderShadows=true;
         focus=new GameObject("Point de suivi").transform;focus.position=new Vector3(7,.3f,4.8f);focus.SetParent(root,true);
-        BuildGround();BuildVillage();BuildLighting();BuildPlayer();
+        BuildGround();BuildVillage();BuildLandBorders();BuildLighting();BuildPlayer();BuildInterior();
         targetRenderer=GroundCard("Case visée",art.Marker,new Vector3(0,.065f,0),new Vector2(.97f,.95f));
         targetRenderer.gameObject.SetActive(false);
         state.PlotChanged+=Refresh;
@@ -144,7 +144,7 @@ public sealed class FarmWorld25D : IDisposable
     void BuildVillage()
     {
         house=Prop(FarmArt.Kind.Cottage,new Vector2(2,7.1f),3.1f,true);
-        Prop(FarmArt.Kind.Shop,new Vector2(11.8f,7.2f),2.7f,true);
+        shopIllustration=Prop(FarmArt.Kind.Shop,new Vector2(11.8f,7.2f),2.7f,true);
         Prop(FarmArt.Kind.Crate,new Vector2(10.1f,7.1f),.85f);
         Prop(FarmArt.Kind.Crate,new Vector2(1.2f,6.6f),.65f);
         Prop(FarmArt.Kind.Reeds,new Vector2(12.8f,3.6f),1.25f);
@@ -182,15 +182,15 @@ public sealed class FarmWorld25D : IDisposable
         controller=Player.gameObject.AddComponent<CharacterController>();controller.height=1.15f;controller.radius=.24f;
         controller.center=new Vector3(0,.58f,0);controller.minMoveDistance=0;controller.stepOffset=.20f;controller.skinWidth=.035f;
         actor=new GameObject("Rig du fermier").transform;actor.SetParent(Player,false);
-        float h=1.45f,ratio=art.GetSprite(FarmArt.Kind.Farmer).rect.width/art.GetSprite(FarmArt.Kind.Farmer).rect.height;
-        head=new GameObject("Tête").transform;head.SetParent(actor,false);head.localPosition=new Vector3(0,h*.58f,0);
-        torso=new GameObject("Buste").transform;torso.SetParent(actor,false);torso.localPosition=new Vector3(0,h*.23f,0);
-        var a=Card("Tête illustrée",art.FarmerPart(0),Vector3.zero,h*.42f,head,false);actorRenderers.Add(a);
-        a=Card("Buste illustré",art.FarmerPart(1),Vector3.zero,h*.35f,torso,false);actorRenderers.Add(a);
-        leftLeg=new GameObject("Jambe gauche").transform;leftLeg.SetParent(actor,false);leftLeg.localPosition=new Vector3(-ratio*h*.25f,h*.23f,0);
-        rightLeg=new GameObject("Jambe droite").transform;rightLeg.SetParent(actor,false);rightLeg.localPosition=new Vector3(ratio*h*.25f,h*.23f,0);
-        a=Card("Pied gauche",art.FarmerPart(2),new Vector3(0,-h*.23f,0),h*.23f,leftLeg,false);actorRenderers.Add(a);
-        a=Card("Pied droit",art.FarmerPart(3),new Vector3(0,-h*.23f,0),h*.23f,rightLeg,false);actorRenderers.Add(a);
+        var defaultAppearance=new FarmAppearance();
+        head=new GameObject("Tête").transform;head.SetParent(actor,false);head.localPosition=new Vector3(0,FarmArt.AvatarHeadBase,-.018f);
+        torso=new GameObject("Buste").transform;torso.SetParent(actor,false);torso.localPosition=new Vector3(0,FarmArt.AvatarTorsoBase,-.01f);
+        var a=Card("Tête illustrée",art.AvatarPart(defaultAppearance,0),Vector3.zero,FarmArt.AvatarHeadHeight,head,false);actorRenderers.Add(a);
+        a=Card("Buste illustré",art.AvatarPart(defaultAppearance,1),Vector3.zero,FarmArt.AvatarTorsoHeight,torso,false);actorRenderers.Add(a);
+        leftLeg=new GameObject("Jambe gauche").transform;leftLeg.SetParent(actor,false);leftLeg.localPosition=new Vector3(-FarmArt.AvatarLegSpacing,FarmArt.AvatarLegHeight,0);
+        rightLeg=new GameObject("Jambe droite").transform;rightLeg.SetParent(actor,false);rightLeg.localPosition=new Vector3(FarmArt.AvatarLegSpacing,FarmArt.AvatarLegHeight,0);
+        a=Card("Pied gauche",art.AvatarPart(defaultAppearance,2),new Vector3(0,-FarmArt.AvatarLegHeight,0),FarmArt.AvatarLegHeight,leftLeg,false);actorRenderers.Add(a);
+        a=Card("Pied droit",art.AvatarPart(defaultAppearance,3),new Vector3(0,-FarmArt.AvatarLegHeight,0),FarmArt.AvatarLegHeight,rightLeg,false);actorRenderers.Add(a);
         actor.localScale=new Vector3(1,1/Mathf.Cos(CameraPitch*Mathf.Deg2Rad),1);
         cards.Add(actor);
         playerShadow=ContactShadow("Ancrage du fermier",Position(6,2),new Vector2(.8f,.44f));
@@ -206,18 +206,20 @@ public sealed class FarmWorld25D : IDisposable
         if(movement.sqrMagnitude>.01f)Facing=new Vector2(movement.x,movement.z).normalized;
         if(Application.isPlaying)controller.Move((movement*3.2f+Vector3.down*2)*delta);
         else Player.position+=movement*3.2f*delta;
-        var pos=Player.position;pos.x=Mathf.Clamp(pos.x,.3f,14.7f);pos.z=Mathf.Clamp(pos.z,.3f,10.7f);
-        if(!Application.isPlaying)pos.y=GroundHeight(pos.x,pos.z)+.025f;Player.position=pos;
+        var pos=Player.position;pos.x=Mathf.Clamp(pos.x,Indoors?HomeOffsetX+.3f:.3f,Indoors?HomeOffsetX+8.7f:14.7f);pos.z=Mathf.Clamp(pos.z,.3f,Indoors?6.7f:10.7f);
+        if(!Application.isPlaying)pos.y=Indoors?.025f:GroundHeight(pos.x,pos.z)+.025f;Player.position=pos;
         float stride=canMove?Mathf.Sin(Time.time*11)*LastMoveMagnitude:0;
-        leftLeg.localRotation=Quaternion.Euler(0,0,stride*10);rightLeg.localRotation=Quaternion.Euler(0,0,-stride*10);
-        head.localRotation=Quaternion.Euler(0,0,stride*1.4f);
-        torso.localRotation=Quaternion.Euler(0,0,stride*2f+(Time.time<actionUntil?-7f:0));
-        actor.localPosition=new Vector3(0,Mathf.Abs(stride)*.035f,0);
+        leftLeg.localRotation=Quaternion.Euler(0,0,stride*6);rightLeg.localRotation=Quaternion.Euler(0,0,-stride*6);
+        leftLeg.localPosition=new Vector3(-FarmArt.AvatarLegSpacing,FarmArt.AvatarLegHeight+Mathf.Max(0,stride)*.035f,0);
+        rightLeg.localPosition=new Vector3(FarmArt.AvatarLegSpacing,FarmArt.AvatarLegHeight+Mathf.Max(0,-stride)*.035f,0);
+        head.localRotation=Quaternion.Euler(0,0,-stride*.9f);
+        torso.localRotation=Quaternion.Euler(0,0,stride*1.5f+(Time.time<actionUntil?-5f:0));
+        actor.localPosition=new Vector3(0,Mathf.Abs(stride)*.02f+Mathf.Sin(Time.time*2)*.004f,0);
         if(canMove&&input.x>.15f)actor.localScale=new Vector3(1,actor.localScale.y,1);
         else if(canMove&&input.x<-.15f)actor.localScale=new Vector3(-1,actor.localScale.y,1);
-        playerShadow.transform.position=new Vector3(pos.x,GroundHeight(pos.x,pos.z)+.018f,pos.z-.22f);
+        playerShadow.transform.position=new Vector3(pos.x,(Indoors?0:GroundHeight(pos.x,pos.z))+.018f,pos.z-.22f);
         UpdateCamera(delta,false);UpdateCards();UpdateLighting();
-        var t=Target();targetRenderer.gameObject.SetActive(canMove&&(int)tool<4&&FarmSimulation.Cultivable(t.x,t.y));
+        var t=AimedPlot;targetRenderer.gameObject.SetActive(!Indoors&&canMove&&(int)tool<4&&state.CanCultivate(t.x,t.y));
         targetRenderer.transform.position=Position(t.x,t.y)+new Vector3(0,.045f,-.475f);
         // Léger mouvement des feuilles : reste un plan vertical dans le monde 3D.
     }
@@ -225,16 +227,22 @@ public sealed class FarmWorld25D : IDisposable
     void UpdateCamera(float delta,bool immediate)
     {
         // Suivi réel du personnage, limité au centre de la clairière.
-        Vector3 desired=new Vector3(Mathf.Clamp(Player.position.x,3.8f,10.8f),.3f,Mathf.Clamp(Player.position.z+1.6f,3.2f,7.8f));
+        Vector3 desired=Indoors?new Vector3(HomeOffsetX+4.5f,.5f,3.5f):new Vector3(Mathf.Clamp(Player.position.x,3.8f,10.8f),.3f,Mathf.Clamp(Player.position.z+1.6f,3.2f,7.8f));
         if(immediate)focus.position=desired;else focus.position=Vector3.Lerp(focus.position,desired,1-Mathf.Exp(-delta*3));
-        Camera.transform.rotation=Quaternion.Euler(CameraPitch,yaw,0);Camera.transform.position=focus.position-Camera.transform.forward*CameraDistance;
+        Camera.transform.rotation=Quaternion.Euler(CameraPitch,Indoors?0:yaw,0);Camera.transform.position=focus.position-Camera.transform.forward*(Indoors?14.5f:CameraDistance);
     }
     void UpdateCards()
     {
-        for(int i=cards.Count-1;i>=0;i--){if(cards[i]==null){cards.RemoveAt(i);continue;}cards[i].rotation=Quaternion.Euler(0,yaw,0);}
+        for(int i=cards.Count-1;i>=0;i--){if(cards[i]==null){cards.RemoveAt(i);continue;}cards[i].rotation=Quaternion.Euler(0,Indoors?0:yaw,0);}
     }
     public void UpdateLighting()
     {
+        if(Indoors)
+        {
+            sun.transform.rotation=Quaternion.Euler(55,-25,0);sun.color=new Color(1,.87f,.70f);sun.intensity=.85f;moon.intensity=0;
+            RenderSettings.ambientLight=new Color(.55f,.48f,.39f);RenderSettings.fog=false;Camera.backgroundColor=new Color(.18f,.23f,.21f);return;
+        }
+        RenderSettings.fog=true;
         float h=(float)state.Hour;float day=Mathf.SmoothStep(0,1,Mathf.Clamp01(Mathf.Sin((h-6)/12*Mathf.PI)*2));
         sun.transform.rotation=Quaternion.Euler(Mathf.Lerp(20,65,day),Mathf.Lerp(-60,60,h/24),0);
         sun.color=Color.Lerp(new Color(.75f,.48f,.35f),new Color(.96f,.95f,.90f),day);
@@ -278,6 +286,7 @@ public sealed class FarmWorld25D : IDisposable
     public void Dispose()
     {
         state.PlotChanged-=Refresh;
+        state.LandChanged-=RefreshLandBorders;
         if(root!=null)FarmArt.Release(root.gameObject);
         foreach(var m in materials)FarmArt.Release(m);foreach(var mesh in meshes)FarmArt.Release(mesh);
     }

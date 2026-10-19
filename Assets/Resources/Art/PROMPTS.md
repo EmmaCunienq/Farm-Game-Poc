@@ -7,6 +7,11 @@ Ces images ont été créées avec l’outil intégré imagegen pour ce projet. 
 - `village-atlas.png` : atlas RGBA transparent de neuf illustrations (maison, boutique, arbre, fermier, carottes, pousse, roseaux, fleurs, caisse).
 - `clearing-ground.png` : sol peint de la clairière.
 - `extra-crops.png` : atlas transparent des radis et des citrouilles.
+- `home-paper-atlas.png` et `home-paper-sides.png` : mobilier illustré, armoire, coffre et détails de l'intérieur.
+- `home-painted-surfaces.png` : trois papiers peints et trois sols peints.
+- `farmer-paper-parts.png` : coiffures, hauts et bas peints du personnage personnalisable.
+
+Les prompts de cette refonte sont conservés dans `PAPER_REDESIGN_PROMPTS.md`.
 
 L’import Unity conserve l’alpha et désactive la compression. FarmArt découpe les sujets selon leurs bornes réelles ; les illustrations sont ancrées au pied et utilisées comme cartes verticales dans le monde 3D. Le shader URP utilise leur alpha pour découper les silhouettes et les ombres. Les sillons de terre, la mare et les panneaux de l’interface sont dessinés en code. Le personnage est découpé en tête, buste et jambes pour un rig natif simple.
 

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // Textures et sprites consommés par les cartes 3D et l’interface.
-public sealed class FarmArt : IDisposable
+public sealed partial class FarmArt : IDisposable
 {
     public enum Kind { Cottage, Shop, Oak, Farmer, Carrots, Sprout, Reeds, Flowers, Crate, Radishes, Pumpkin }
     readonly Texture2D atlas;
