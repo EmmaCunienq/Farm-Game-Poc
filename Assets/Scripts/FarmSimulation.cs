@@ -144,6 +144,7 @@ public sealed partial class FarmSimulation
         save.Day=Day;save.Hour=Hour;save.Money=Money;save.SelectedSeed=SelectedSeed;save.SelectedProduct=SelectedProduct;
         save.UnlockedLand=UnlockedLand;
         save.Seeds=(int[])Seeds.Clone();save.Products=(int[])Products.Clone();save.Crafted=(int[])Crafted.Clone();
+        save.Decor=new FarmDecor[Decor.Count];for(int i=0;i<Decor.Count;i++)save.Decor[i]=new FarmDecor{Kind=Decor[i].Kind,X=Decor[i].X,Z=Decor[i].Z};
         save.Plots=new FarmPlot[Width*Height];
         for(int z=0;z<Height;z++)for(int x=0;x<Width;x++)
         {
@@ -158,6 +159,7 @@ public sealed partial class FarmSimulation
         Array.Copy(save.Seeds,Seeds,3);Array.Copy(save.Products,Products,3);
         // Les sauvegardes antérieures à l'établi n'ont pas encore d'objets fabriqués.
         Array.Clear(Crafted,0,Crafted.Length);if(save.Crafted!=null&&save.Crafted.Length==Crafted.Length)Array.Copy(save.Crafted,Crafted,Crafted.Length);
+        Decor.Clear();if(save.Decor!=null)foreach(var d in save.Decor)Decor.Add(new FarmDecor{Kind=d.Kind,X=d.X,Z=d.Z});DecorChanged?.Invoke();
         for(int z=0;z<Height;z++)for(int x=0;x<Width;x++){var p=save.Plots[z*Width+x];Plots[x,z]=new FarmPlot{Tilled=p.Tilled,UsesLeft=p.UsesLeft,EmptyHours=p.EmptyHours,GrowthHours=p.GrowthHours,Crop=p.Crop,WateredDay=p.WateredDay};Changed(x,z);}
     }
     public int TotalProducts { get { int sum=0;foreach(int count in Products)sum+=count;return sum; } }

@@ -7,7 +7,7 @@ public struct FarmInputFrame
     public Vector2 PointerPosition;
     public bool PointerAvailable;
     public Vector2Int Navigate;
-    public bool Confirm, Cancel, Wheel, Inventory, Sleep, Shop, Orbit, Pause, Rotate, Delete;
+    public bool Confirm, Cancel, Wheel, Inventory, Sleep, Shop, Build, Orbit, Pause, Rotate, Delete;
     public int Tab, Quantity, DirectTool;
 }
 
@@ -88,7 +88,7 @@ public sealed class FarmInput
             (Down(k,Key.W)||Down(k,Key.Z)||Down(k,Key.UpArrow)?1:0)-(Down(k,Key.S)||Down(k,Key.DownArrow)?1:0));
         f.Confirm=Pressed(k,Key.E)||Pressed(k,Key.Space)||Pressed(k,Key.Enter);
         f.Cancel=Pressed(k,Key.Escape);f.Wheel=Pressed(k,Key.Tab);f.Inventory=Pressed(k,Key.I);
-        f.Sleep=Pressed(k,Key.N);f.Shop=Pressed(k,Key.B);f.Orbit=Down(k,Key.LeftAlt);
+        f.Sleep=Pressed(k,Key.N);f.Shop=Pressed(k,Key.B);f.Build=Pressed(k,Key.G);f.Orbit=Down(k,Key.LeftAlt);
         f.Rotate=Pressed(k,Key.R);f.Delete=Pressed(k,Key.Delete);
         f.CameraStick=new Vector2((Down(k,Key.C)?1:0)-(Down(k,Key.V)?1:0),0);
         f.Tab=(Pressed(k,Key.PageDown)?1:0)-(Pressed(k,Key.PageUp)?1:0);
@@ -122,7 +122,7 @@ public sealed class FarmInput
             (Held(KeyCode.W)||Held(KeyCode.Z)||Held(KeyCode.UpArrow)?1:0)-(Held(KeyCode.S)||Held(KeyCode.DownArrow)?1:0));
         f.Confirm=Hit(KeyCode.E)||Hit(KeyCode.Space)||Hit(KeyCode.Return)||Hit(KeyCode.KeypadEnter);
         f.Cancel=Hit(KeyCode.Escape);f.Wheel=Hit(KeyCode.Tab);f.Inventory=Hit(KeyCode.I);
-        f.Sleep=Hit(KeyCode.N);f.Shop=Hit(KeyCode.B);f.Orbit=Held(KeyCode.LeftAlt);
+        f.Sleep=Hit(KeyCode.N);f.Shop=Hit(KeyCode.B);f.Build=Hit(KeyCode.G);f.Orbit=Held(KeyCode.LeftAlt);
         f.Rotate=Hit(KeyCode.R);f.Delete=Hit(KeyCode.Delete);
         f.CameraStick=new Vector2((Held(KeyCode.C)?1:0)-(Held(KeyCode.V)?1:0),0);
         f.Tab=(Hit(KeyCode.PageDown)?1:0)-(Hit(KeyCode.PageUp)?1:0);
@@ -155,7 +155,7 @@ public sealed class FarmInput
     static bool Held(KeyCode key)=>Input.GetKey(key);
     static bool Hit(KeyCode key)=>Input.GetKeyDown(key);
 #endif
-    static bool KeyboardUsed(FarmInputFrame f)=>f.Move.sqrMagnitude>0||f.Confirm||f.Cancel||f.Wheel||f.Inventory||f.Sleep||f.Shop||f.Pause||f.Rotate||f.Delete||f.Orbit||f.Tab!=0||f.Quantity!=0||f.DirectTool>=0;
+    static bool KeyboardUsed(FarmInputFrame f)=>f.Move.sqrMagnitude>0||f.Confirm||f.Cancel||f.Wheel||f.Inventory||f.Sleep||f.Shop||f.Build||f.Pause||f.Rotate||f.Delete||f.Orbit||f.Tab!=0||f.Quantity!=0||f.DirectTool>=0;
     static bool Down(Keyboard k,Key key)=>k[key].isPressed;
     static bool Pressed(Keyboard k,Key key)=>k[key].wasPressedThisFrame;
 }

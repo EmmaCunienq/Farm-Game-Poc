@@ -37,6 +37,7 @@ public sealed partial class FarmPoc
     public bool ProcessPointerClick(Vector2 screen,bool secondary)
     {
         controls.MarkMouseUsed();
+        if(view==View.Decoration&&buildPlacing)return ProcessBuildClick(screen,secondary);
         if(secondary&&view!=View.Play)
         {
             if(IsPaused){if(view==View.Pause)Resume();else view=View.Pause;}else CloseView();return true;
@@ -53,7 +54,8 @@ public sealed partial class FarmPoc
         if(!secondary)return StartMouseMove(point);
         if(ActiveTool==FarmTool.House||ActiveTool==FarmTool.Wardrobe)
         {
-            if(!World.Indoors){Say("Clique sur la maison pour entrer, puis utilise le coffre ou l'armoire.");return true;}
+            if(!World.Indoors&&ActiveTool==FarmTool.House){OpenDecoration();return true;}
+            if(!World.Indoors){Say("Clique sur la maison pour entrer, puis utilise l'armoire.");return true;}
             if(ActiveTool==FarmTool.House)OpenDecoration();else OpenAppearance();return true;
         }
         return StartMouseFarmAction(new Vector2Int(x,z));

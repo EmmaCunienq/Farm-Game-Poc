@@ -78,11 +78,14 @@ public static class FarmHomeChecks
         Check(before!=art.AvatarPart(draft,0),"Coiffure modifie la carte du visage");draft.Top=2;
         Check(art.AvatarPart(draft,1)!=art.AvatarPart(poc.Appearance,1),"Vêtement modifie la carte du buste");
         poc.World.Teleport(new Vector3(88.5f,.03f,4.9f),Vector2.up);Confirm(poc);Check(poc.CurrentScreen=="Decoration","Coffre ouvre la décoration");
-        Set(poc,"decorKind",3);Set(poc,"decorX",3);Set(poc,"decorZ",5);int count=poc.Home.Furniture.Count;Confirm(poc);
-        Check(poc.Home.Furniture.Count==count+1,"Pose d'un meuble depuis le menu");
+        Check(!poc.BuildPlacing,"Le coffre ouvre d'abord le catalogue");
+        Set(poc,"decorKind",3);Confirm(poc);Check(poc.BuildPlacing,"Choix du meuble : le catalogue se range pour la pose");
+        Set(poc,"decorX",3);Set(poc,"decorZ",5);int count=poc.Home.Furniture.Count;Confirm(poc);
+        Check(poc.Home.Furniture.Count==count+1&&poc.BuildPlacing,"Pose d'un meuble dans la pièce");
         Set(poc,"decorSelecting",true);Confirm(poc);Set(poc,"decorX",3);Set(poc,"decorZ",2);Set(poc,"decorRotation",1);Confirm(poc);
         Check(poc.Home.Furniture[count].Rotation==1&&poc.Home.Furniture[count].X==3,"Déplacement et rotation dans le menu");
         var del=Frame();del.Delete=true;poc.ProcessInput(del);Check(poc.Home.Furniture.Count==count,"Retrait d'un meuble");
+        Cancel(poc);Check(!poc.BuildPlacing&&poc.CurrentScreen=="Decoration","Échap pendant la pose revient au catalogue");
         var tab=Frame();tab.Tab=1;poc.ProcessInput(tab);poc.ProcessInput(f);Check(poc.Home.Wallpaper==1,"Papier peint changé au clavier");
         poc.ProcessInput(tab);poc.ProcessInput(f);Check(poc.Home.Floor==1,"Sol changé au clavier");Cancel(poc);
         Cancel(poc);Check(poc.IsPaused&&Time.timeScale==0,"Échap ouvre la pause et arrête le temps Unity");

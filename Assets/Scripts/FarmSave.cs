@@ -10,6 +10,7 @@ public sealed class FarmSaveData
     public double Hour;
     public int[] Seeds,Products,Crafted;
     public FarmPlot[] Plots;
+    public FarmDecor[] Decor;
     public FarmHome Home;
     public FarmAppearance Appearance;
     public bool Indoors;
@@ -26,6 +27,16 @@ public sealed class FarmSaveData
         foreach(int count in Products)if(count<0||count>10000000)return false;
         if(Crafted!=null&&Crafted.Length!=0&&Crafted.Length!=FarmCrafting.Recipes.Length)return false;
         if(Crafted!=null)foreach(int count in Crafted)if(count<0||count>10000000)return false;
+        if(Decor!=null)
+        {
+            if(Decor.Length>FarmSimulation.MaxDecor)return false;
+            for(int i=0;i<Decor.Length;i++)
+            {
+                var d=Decor[i];
+                if(d==null||d.Kind<0||d.Kind>=FarmCrafting.Recipes.Length||!FarmCrafting.Recipes[d.Kind].Placeable||!FarmSimulation.DecorCell(d.X,d.Z))return false;
+                for(int j=0;j<i;j++)if(Decor[j].X==d.X&&Decor[j].Z==d.Z)return false;
+            }
+        }
         foreach(var p in Plots)
             if(p==null||p.Crop< -1||p.Crop>2||p.UsesLeft<0||p.UsesLeft>3||!Finite(p.GrowthHours)||p.GrowthHours<0||p.GrowthHours>60||!Finite(p.EmptyHours)||p.EmptyHours<0||p.WateredDay< -1||p.WateredDay>Day)return false;
         for(int i=0;i<Plots.Length;i++)

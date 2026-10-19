@@ -51,6 +51,7 @@ public sealed partial class FarmWorld25D : IDisposable
         Camera.depth=100;Camera.allowHDR=true;Camera.GetUniversalAdditionalCameraData().renderShadows=true;
         focus=new GameObject("Point de suivi").transform;focus.position=new Vector3(7,.3f,4.8f);focus.SetParent(root,true);
         BuildGround();BuildVillage();BuildWorkbench();BuildLandBorders();BuildLighting();BuildPlayer();BuildInterior();
+        state.DecorChanged+=RebuildDecor;RebuildDecor();
         targetRenderer=GroundCard("Case visée",art.Marker,new Vector3(0,.065f,0),new Vector2(.97f,.95f));
         targetRenderer.gameObject.SetActive(false);
         state.PlotChanged+=Refresh;
@@ -227,9 +228,10 @@ public sealed partial class FarmWorld25D : IDisposable
     void UpdateCamera(float delta,bool immediate)
     {
         // Suivi réel du personnage, limité au centre de la clairière.
-        Vector3 desired=Indoors?new Vector3(HomeOffsetX+4.5f,.5f,3.5f):new Vector3(Mathf.Clamp(Player.position.x,3.8f,10.8f),.3f,Mathf.Clamp(Player.position.z+1.6f,3.2f,7.8f));
+        var follow=CameraFocus??new Vector2(Player.position.x,Player.position.z);
+        Vector3 desired=Indoors?new Vector3(HomeOffsetX+4.5f,.5f,3.5f):new Vector3(Mathf.Clamp(follow.x,3.8f,10.8f),.3f,Mathf.Clamp(follow.y+1.6f,3.2f,7.8f));
         if(immediate)focus.position=desired;else focus.position=Vector3.Lerp(focus.position,desired,1-Mathf.Exp(-delta*3));
-        Camera.transform.rotation=Quaternion.Euler(CameraPitch,Indoors?0:yaw,0);Camera.transform.position=focus.position-Camera.transform.forward*(Indoors?14.5f:CameraDistance);
+        Camera.transform.rotation=Quaternion.Euler(CameraPitch,Indoors?0:yaw,0);Camera.transform.position=focus.position-Camera.transform.forward*(Indoors?14.5f:CameraDistanceOverride??CameraDistance);
     }
     void UpdateCards()
     {
@@ -251,6 +253,7 @@ public sealed partial class FarmWorld25D : IDisposable
         RenderSettings.fogColor=Color.Lerp(new Color(.11f,.15f,.23f),new Color(.43f,.49f,.36f),day);
         Camera.backgroundColor=RenderSettings.fogColor;
         foreach(var light in lanterns)light.intensity=Mathf.Lerp(2.4f,.1f,day);
+        foreach(var light in decorLights)if(light!=null)light.intensity=Mathf.Lerp(1.8f,0,day);
         if(contactMaterial!=null)contactMaterial.SetFloat("_Strength",Mathf.Lerp(.45f,.95f,day));
     }
     public Vector2Int Target()
@@ -287,6 +290,7 @@ public sealed partial class FarmWorld25D : IDisposable
     {
         state.PlotChanged-=Refresh;
         state.LandChanged-=RefreshLandBorders;
+        state.DecorChanged-=RebuildDecor;
         if(root!=null)FarmArt.Release(root.gameObject);
         foreach(var m in materials)FarmArt.Release(m);foreach(var mesh in meshes)FarmArt.Release(mesh);
     }

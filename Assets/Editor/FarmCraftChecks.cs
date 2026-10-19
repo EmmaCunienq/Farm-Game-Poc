@@ -30,10 +30,11 @@ public static class FarmCraftChecks
         typeof(FarmPoc).GetField("storage",Private).SetValue(poc,new FarmSave(testPath));
         try
         {
-            Workbench(poc);
+            Workbench(poc);Placement(poc);
             AtWorkbench(poc);poc.World.SetCraftTime(.05f);FarmHomeChecks.Render(poc,"farm-craft-workbench.png");poc.World.SetCraftTime(-1);
+            FarmHomeChecks.Render(poc,"farm-build-placement.png");Cancel(poc);Cancel(poc);
             string report=Path.GetFullPath(Path.Combine(Application.dataPath,"../../../output/craft-checks.md"));
-            File.WriteAllText(report,"# Contrôles de l'établi\n\nUnity 6000.3.0f1 : "+checks+" contrôles réussis.\n\nRecettes, ingrédients manquants, consommation en fin d'animation, interruption sans perte, vente chez le marchand, sauvegarde et anciennes sauvegardes, ouverture au clavier et à la souris.\n\nCapture URP : farm-craft-workbench.png (copeaux de l'animation visibles). L'interface OnGUI est exclue des captures du décor.\n");
+            File.WriteAllText(report,"# Contrôles de l'établi\n\nUnity 6000.3.0f1 : "+checks+" contrôles réussis.\n\nRecettes, ingrédients manquants, consommation en fin d'animation, interruption sans perte, vente chez le marchand, sauvegarde et anciennes sauvegardes, ouverture au clavier et à la souris. Pose des décorations dans la ferme : catalogue, panneau rangé, champs et obstacles refusés, clic dans le décor, déplacement, retrait et sauvegarde.\n\nCaptures URP : farm-craft-workbench.png (copeaux de l'animation visibles) et farm-build-placement.png (lanternes posées, aperçu de l'épouvantail). L'interface OnGUI est exclue des captures du décor.\n");
             Debug.Log("CRAFT_ALL_CHECKS_OK: "+checks);
         }
         finally{UnityEngine.Object.DestroyImmediate(poc.gameObject);Time.timeScale=1;}
@@ -58,6 +59,31 @@ public static class FarmCraftChecks
         restored.Restore(save);Check(restored.TotalCrafted==0,"Ancienne sauvegarde : inventaire d'objets vide");
         save.Crafted=new[]{1,2};Check(!save.Valid(),"Liste d'objets incohérente refusée");
         save.Crafted=new int[FarmCrafting.Recipes.Length];save.Crafted[0]=-1;Check(!save.Valid(),"Quantité négative refusée");
+    }
+    static void Set(FarmPoc poc,string field,object value)=>typeof(FarmPoc).GetField(field,Private).SetValue(poc,value);
+    static void Placement(FarmPoc poc)
+    {
+        poc.World.SetIndoors(false,false);poc.World.Teleport(FarmWorld25D.Position(6,2),Vector2.up);poc.State.Crafted[1]=2;
+        var build=Frame();build.Build=true;poc.ProcessInput(build);
+        Check(poc.CurrentScreen=="Decoration"&&poc.BuildingFarm&&!poc.BuildPlacing,"G ouvre le catalogue des décorations de la ferme");
+        Set(poc,"farmKind",1);Confirm(poc);Check(poc.BuildPlacing,"Choix d'une décoration : passage en pose");
+        Set(poc,"decorX",12);Set(poc,"decorZ",1);Confirm(poc);
+        Check(poc.State.Decor.Count==1&&poc.State.Crafted[1]==1&&poc.BuildPlacing,"Lanterne posée dans la ferme");
+        Set(poc,"decorX",5);Set(poc,"decorZ",3);Confirm(poc);Check(poc.State.Decor.Count==1,"Champs refusés");
+        Set(poc,"decorX",12);Set(poc,"decorZ",3);Confirm(poc);Check(poc.State.Decor.Count==1,"Obstacle du décor refusé");
+        Set(poc,"decorX",12);Set(poc,"decorZ",1);Confirm(poc);Check(poc.State.Decor.Count==1,"Case déjà occupée refusée");
+        var screen=poc.World.Camera.WorldToScreenPoint(new Vector3(13,0,1));
+        Check(poc.ProcessPointerClick(new Vector2(screen.x,screen.y),false)&&poc.State.Decor.Count==2&&poc.State.Decor[1].X==13,"Clic dans le décor pose à l'endroit visé");
+        Check(!poc.BuildPlacing&&poc.State.Crafted[1]==0,"Stock épuisé : retour au catalogue");
+        var pick=Frame();pick.Wheel=true;poc.ProcessInput(pick);Check(poc.BuildPlacing,"Mode déplacement depuis le catalogue");
+        Set(poc,"decorX",12);Set(poc,"decorZ",1);Confirm(poc);Set(poc,"decorX",11);Confirm(poc);
+        Check(poc.State.Decor[0].X==11&&poc.State.Crafted[1]==0,"Décoration déplacée sans consommer de stock");
+        var del=Frame();del.Delete=true;poc.ProcessInput(del);
+        Check(poc.State.Decor.Count==1&&poc.State.Decor[0].X==13&&poc.State.Crafted[1]==1,"Décoration retirée et rendue à l'inventaire");
+        Check(poc.SaveGame()&&new FarmSave(poc.SaveFilePath).Read(out var saved,out _)&&saved.Decor.Length==1&&saved.Decor[0].X==13,"Décorations sauvegardées");
+        poc.State.Crafted[5]=1;Cancel(poc);Check(!poc.BuildPlacing&&poc.CurrentScreen=="Decoration","Clic droit / Échap revient au catalogue");
+        Set(poc,"farmKind",5);Confirm(poc);Set(poc,"decorX",12);Set(poc,"decorZ",1);typeof(FarmPoc).GetMethod("UpdateGhost",Private).Invoke(poc,null);
+        poc.World.CameraFocus=new Vector2(7,4.5f);poc.World.RotateCamera(0);
     }
     static void Workbench(FarmPoc poc)
     {

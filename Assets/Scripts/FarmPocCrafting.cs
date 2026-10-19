@@ -4,7 +4,7 @@ public sealed partial class FarmPoc
 {
     int craftCursor,craftRecipe;
     float craftTimer=-1,craftDoneUntil;
-    GUIStyle craftDark,craftDarkSmall,craftOk,craftMissing;
+    GUIStyle craftDark,craftDarkSmall,craftDarkCenter,craftPaperSmall,craftOk,craftMissing,craftOkLeft,craftMissingLeft;
     public int CraftCursor=>craftCursor;
     public bool Crafting=>craftTimer>=0;
     static readonly int[] ObjectItems=BuildObjectItems();
@@ -63,8 +63,12 @@ public sealed partial class FarmPoc
         if(craftDark!=null)return;
         craftDark=new GUIStyle(text);craftDark.normal.textColor=new Color(.20f,.23f,.18f);
         craftDarkSmall=new GUIStyle(small);craftDarkSmall.normal.textColor=new Color(.33f,.30f,.22f);
+        craftPaperSmall=new GUIStyle(small);craftPaperSmall.normal.textColor=paper;
+        craftDarkCenter=new GUIStyle(center);craftDarkCenter.normal.textColor=new Color(.20f,.23f,.18f);
         craftOk=new GUIStyle(text){alignment=TextAnchor.MiddleRight,fontStyle=FontStyle.Bold};craftOk.normal.textColor=new Color(.62f,.86f,.50f);
         craftMissing=new GUIStyle(craftOk);craftMissing.normal.textColor=new Color(.96f,.55f,.42f);
+        craftOkLeft=new GUIStyle(small){fontStyle=FontStyle.Bold};craftOkLeft.normal.textColor=craftOk.normal.textColor;
+        craftMissingLeft=new GUIStyle(craftOkLeft);craftMissingLeft.normal.textColor=craftMissing.normal.textColor;
     }
     void DrawCrafting(float w,float h)
     {

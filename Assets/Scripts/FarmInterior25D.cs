@@ -76,18 +76,23 @@ public sealed partial class FarmWorld25D
     {
         var g=new GameObject(FarmHome.Catalog[item.Kind].Name).transform;g.SetParent(furnitureRoot,false);
         g.localPosition=new Vector3(item.X+item.Width*.5f,0,item.Z+item.Depth*.5f);
+        FurnitureArt(item,g);if(item.Kind==7)return;
+        ContactShadow("Ancrage mobilier",g.position+Vector3.up*.012f,new Vector2(item.Width*.82f,item.Depth*.42f)).transform.SetParent(g,true);
+        var box=g.gameObject.AddComponent<BoxCollider>();box.center=new Vector3(0,.55f,0);box.size=new Vector3(item.Width-.18f,1.1f,item.Depth-.18f);
+    }
+    // Illustration seule, centrée sur l'emprise : partagée par le mobilier posé et l'aperçu de pose.
+    void FurnitureArt(FarmFurniture item,Transform g)
+    {
         if(item.Kind==7)
         {
-            GroundCard("Tapis illustré",art.HomeSprite(9),new Vector3(0,.02f,0),new Vector2(2.85f,1.85f),g);
-            g.localRotation=Quaternion.Euler(0,item.Rotation*90,0);return;
+            var pivot=new GameObject("Orientation du tapis").transform;pivot.SetParent(g,false);pivot.localRotation=Quaternion.Euler(0,item.Rotation*90,0);
+            GroundCard("Tapis illustré",art.HomeSprite(9),new Vector3(0,.02f,0),new Vector2(2.85f,1.85f),pivot);return;
         }
         float[] heights={1.72f,1.20f,1.18f,1.42f,2.05f,1.15f,1.85f};
         var sprite=art.HomeSprite(item.Kind,item.Rotation%2!=0);
         float height=Mathf.Min(heights[item.Kind],item.Width*.97f/(sprite.rect.width/sprite.rect.height));
         var illustration=Card("Illustration "+FarmHome.Catalog[item.Kind].Name,sprite,Vector3.zero,height,g);
         if(item.Rotation>=2){var s=illustration.transform.localScale;s.x=-s.x;illustration.transform.localScale=s;}
-        ContactShadow("Ancrage mobilier",g.position+Vector3.up*.012f,new Vector2(item.Width*.82f,item.Depth*.42f)).transform.SetParent(g,true);
-        var box=g.gameObject.AddComponent<BoxCollider>();box.center=new Vector3(0,.55f,0);box.size=new Vector3(item.Width-.18f,1.1f,item.Depth-.18f);
     }
     public void SetIndoors(bool value,bool teleport=true)
     {

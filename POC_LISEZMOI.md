@@ -57,15 +57,21 @@ Roue : Bêche, Graines, Arrosoir, Panier, Maison, Armoire. Dans les menus, le mo
 
 Approche-toi de la porte de la maison, en haut à gauche, puis appuie sur E / A. Tu arrives dans une pièce de neuf cases sur sept. Pour sortir, rejoins le seuil vert au centre du bord inférieur et appuie sur E / A.
 
-Le coffre, dans le coin droit du fond, ouvre la décoration. L'outil Maison (5) donne aussi accès à ce menu depuis l'intérieur. Les meubles du catalogue sont gratuits dans ce POC : lit, table, chaise, canapé, bibliothèque, plante, lampe et tapis.
+Le coffre, dans le coin droit du fond, ouvre la décoration. L'outil Maison (5), la touche G ou le bouton Construire y donnent aussi accès depuis l'intérieur. Les meubles du catalogue sont gratuits dans ce POC : lit, table, chaise, canapé, bibliothèque, plante, lampe et tapis.
 
-- Choisis un meuble, puis sa case d'ancrage sur le plan. E / A ou le bouton Poser valide la pose.
-- Les flèches / le stick déplacent la case. −/+ ou LT/RT changent le meuble ; R / Y le tourne.
-- Tab / X passe en sélection. Choisis un meuble existant puis E / A pour le déplacer ; choisis la nouvelle case puis valide. Le meuble conserve son ancien emplacement si la nouvelle pose est invalide ou si tu fermes le menu.
-- Suppr / R3 ou Retirer range le meuble sélectionné dans le catalogue.
+- Le catalogue affiche les meubles illustrés. Choisis-en un (clic, ou flèches puis E / A) : le panneau glisse sur le côté, le voile disparaît et un aperçu du meuble suit le curseur dans la pièce, vert si la place est libre, rouge sinon.
+- Clic gauche ou E / A pose le meuble ; tu peux en poser plusieurs à la suite. Les flèches / le stick déplacent l'aperçu ; R / Y le tourne ; −/+ ou LT/RT changent de meuble.
+- Tab / X passe en mode déplacement : vise un meuble existant et valide, puis choisis sa nouvelle place. Le meuble conserve son ancien emplacement si la nouvelle pose est invalide ou si tu quittes la pose.
+- Suppr / R3 ou Retirer range le meuble visé dans le catalogue.
+- Clic droit, Échap / B ou le bouton Catalogue ramènent le panneau au centre.
+- Le panneau indique en direct l'état de la case visée, et une bulle sous l'aperçu donne la raison d'un refus. Au clavier et à la manette, l'aperçu démarre sur la place libre la plus proche. Juste après une pose, l'aperçu s'efface pour laisser voir l'objet posé.
 - Les meubles doivent rester dans la pièce et ne peuvent pas se chevaucher. Les tapis peuvent passer sous le mobilier. L'entrée, le coffre et l'armoire gardent des cases réservées. La pose sur le personnage est refusée.
 - Les onglets Papier peint et Sol proposent chacun trois revêtements. Page↑/↓ ou LB/RB change l'onglet ; gauche/droite change le revêtement.
 - Terminer ou Échap / B conserve les modifications de décoration et tente une sauvegarde automatique. La décoration est appliquée immédiatement, et n'a pas de bouton d'annulation globale.
+
+### Décorations de la ferme
+
+Dehors, la touche G, le bouton Construire ou l'outil Maison ouvrent le même menu avec les décorations fabriquées à l'établi : caisse de marché, lanterne citrouille et épouvantail. L'onglet Objets de l'inventaire propose aussi « Placer dans la ferme ». Après le choix, le panneau se range et la caméra montre toute la ferme (à la souris) ou suit l'aperçu (clavier et manette). Les décorations se posent hors des champs et des parcelles, sans chevaucher le décor ni le personnage. Poser consomme l'objet ; retirer le rend à l'inventaire. Les lanternes s'allument la nuit. Les décorations sont sauvegardées.
 
 ## Personnalisation du personnage
 
@@ -132,7 +138,7 @@ L'établi se trouve à gauche des champs. Approche-toi puis agis (E / A, ou clic
 | Chapeau de roseaux | Accessoire | 3 radis + 5 pièces | 26 pièces |
 | Épouvantail | Décoration | 2 carottes + 1 citrouille + 6 pièces | 52 pièces |
 
-Les objets fabriqués apparaissent dans l'onglet **Objets** de l'inventaire et se vendent chez le marchand (onglet **Vendre les objets**). Ils sont conservés dans la sauvegarde. Les recettes se règlent dans le tableau Recipes de FarmCrafting.cs. L'établi utilise provisoirement l'illustration de la table ; les objets n'ont pas encore d'usage en jeu (porter un accessoire, poser une décoration, fertiliser).
+Les objets fabriqués apparaissent dans l'onglet **Objets** de l'inventaire et se vendent chez le marchand (onglet **Vendre les objets**). Les décorations se posent dans la ferme (voir Décorations de la ferme). Ils sont conservés dans la sauvegarde. Les recettes se règlent dans le tableau Recipes de FarmCrafting.cs. L'établi utilise provisoirement l'illustration de la table ; les accessoires et l'engrais n'ont pas encore d'usage en jeu.
 
 ## Temps et état de la terre
 
@@ -179,6 +185,8 @@ L'éclairage utilise les lumières 3D du renderer Universal URP, adaptées à ce
 - Assets/Scripts/FarmCrafting.cs : recettes, fabrication et vente des objets.
 - Assets/Scripts/FarmPocCrafting.cs : catalogue de l'établi et animation de l'interface.
 - Assets/Scripts/FarmWorldCrafting.cs : établi dans le monde et animation de fabrication.
+- Assets/Scripts/FarmPocBuild.cs : menu de construction (catalogue, panneau latéral, pose) pour la maison et la ferme.
+- Assets/Scripts/FarmWorldPlacement.cs : décorations posées, aperçu de pose et caméra de construction.
 - Assets/Editor/FarmCraftChecks.cs : contrôles de l'établi dans une copie isolée.
 - Assets/Editor/FarmHomeChecks.cs : contrôles fonctionnels à exécuter dans une copie isolée du projet.
 - Assets/Shaders/PaperCutout.shader : matériau éclairé des cartes.
@@ -193,6 +201,8 @@ Les constantes RealSecondsPerDay, SoilIdleHours et HarvestsPerTilling et le tabl
 ## Périmètre
 
 La ferme, la maison et le personnage sont conservés entre les lancements dans un fichier JSON local, avec un seul emplacement de sauvegarde. La maison comprend une pièce et un catalogue gratuit de mobilier ; les achats de meubles, les quêtes, les machines et les animations complètes restent à développer.
+
+Captures de l'interface de pose : output/farm-build-ui-ferme.png et output/farm-build-ui-maison.png.
 
 Aperçus du décor : output/farm-25d-day.png, output/farm-25d-night.png et output/farm-25d-angle.png. Ces captures URP du monde excluent l'interface OnGUI, visible en mode Play.
 

@@ -26,7 +26,7 @@ public sealed partial class FarmPoc : MonoBehaviour
         "Planter les graines choisies dans l'inventaire.",
         "Accélérer la pousse une fois par jour.",
         "Récolter ; vendre le produit choisi près du marchand.",
-        "Entrer par la porte ; décorer la pièce depuis l'intérieur.",
+        "Décorer la ferme dehors, ou la pièce depuis l'intérieur.",
         "Choisir ses traits et ses vêtements dans l'armoire."
     };
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -44,7 +44,7 @@ public sealed partial class FarmPoc : MonoBehaviour
     {
         var frame=controls.Read(Time.unscaledTime);ProcessInput(frame);
         if(IsPaused){CancelMouseNavigation();return;}
-        State.AdvanceRealSeconds(Time.unscaledDeltaTime);UpdateCrafting(Time.unscaledDeltaTime);
+        State.AdvanceRealSeconds(Time.unscaledDeltaTime);UpdateCrafting(Time.unscaledDeltaTime);UpdateBuild(frame,Time.unscaledDeltaTime);
         UpdateMouseAim(frame);var movement=MouseMovement(frame.Move,Time.deltaTime);
         World.Update(Time.deltaTime,movement,view==View.Play,frame.CameraStick,frame.Orbit,ActiveTool);
         if(view==View.Play&&Time.unscaledTime>=nextAutosave){SaveGame(false);nextAutosave=Time.unscaledTime+60;}
@@ -53,6 +53,7 @@ public sealed partial class FarmPoc : MonoBehaviour
     {
         if(f.Pause){if(IsPaused)Resume();else OpenPause();return;}
         if(IsPaused){ProcessPause(f);return;}
+        if(f.Cancel&&view==View.Decoration&&buildPlacing){BackToCatalog();return;}
         if(f.Cancel){if(view==View.Play){OpenPause();return;}CloseView();return;}
         if(f.Inventory&&(view==View.Play||view==View.Inventory)){if(view==View.Inventory)view=View.Play;else OpenInventory();return;}
         switch(view)
@@ -62,6 +63,7 @@ public sealed partial class FarmPoc : MonoBehaviour
                 if(f.Wheel){originalTool=(int)ActiveTool;wheelCursor=originalTool;wheelMouseReady=false;view=View.Wheel;return;}
                 if(f.Sleep){view=View.Sleep;return;}
                 if(f.Shop){OpenShop();return;}
+                if(f.Build){OpenDecoration();return;}
                 if(f.Confirm){CancelMouseNavigation();UseTool();}
                 break;
             case View.Wheel:
@@ -103,7 +105,8 @@ public sealed partial class FarmPoc : MonoBehaviour
         var aimed=World.Target();if(World.NearWorkbench&&!State.CanCultivate(aimed.x,aimed.y)){OpenCrafting();return;}
         if(ActiveTool==FarmTool.House||ActiveTool==FarmTool.Wardrobe)
         {
-            if(!World.Indoors){Say("Entre dans la maison par la porte pour accéder au coffre et à l'armoire.");return;}
+            if(!World.Indoors&&ActiveTool==FarmTool.House){OpenDecoration();return;}
+            if(!World.Indoors){Say("Entre dans la maison par la porte pour accéder à l'armoire.");return;}
             if(ActiveTool==FarmTool.House)OpenDecoration();else OpenAppearance();return;
         }
         if(World.Indoors){Say("Utilise le coffre pour décorer, l'armoire pour te changer, ou le seuil pour sortir.");return;}
@@ -147,6 +150,7 @@ public sealed partial class FarmPoc : MonoBehaviour
         if(id>=6)
         {
             if(World.NearShop){State.SellCrafted(id-6,quantity,out var sold);Say(sold);}
+            else if(!World.Indoors&&FarmCrafting.Recipes[id-6].Placeable)OpenFarmPlacement(id-6);
             else Say(ItemName(id)+" : rejoins le marchand pour le vendre.");
             return;
         }
@@ -194,7 +198,8 @@ public sealed partial class FarmPoc : MonoBehaviour
         DrawHud(w,h);DrawMouseHud(w,h);
         if(view!=View.Play)
         {
-            GUI.color=new Color(0,0,0,.48f);GUI.DrawTexture(new Rect(0,0,w,h),Texture2D.whiteTexture);GUI.color=Color.white;
+            // Pendant une pose, le voile s'efface pour laisser voir le décor.
+            GUI.color=new Color(0,0,0,.48f*(view==View.Decoration?1-Mathf.SmoothStep(0,1,buildSlide):1));GUI.DrawTexture(new Rect(0,0,w,h),Texture2D.whiteTexture);GUI.color=Color.white;
             if(view==View.Wheel)DrawWheel(w,h);
             if(view==View.Inventory||view==View.Shop)DrawInventory(w,h);
             if(view==View.Sleep)DrawSleep(w,h);
@@ -233,9 +238,10 @@ public sealed partial class FarmPoc : MonoBehaviour
             ActiveTool==FarmTool.Basket?"Vente : "+FarmSimulation.Crops[State.SelectedProduct].Name+" × "+quantity:"";
         GUI.Label(new Rect(start+16,h-65,215,30),detail,small);
         GUI.enabled=view==View.Play;
-        if(GUI.Button(new Rect(start+237,h-89,148,52),"Roue\nTab / X",button)){originalTool=(int)ActiveTool;wheelCursor=originalTool;wheelMouseReady=false;view=View.Wheel;}
-        if(GUI.Button(new Rect(start+394,h-89,148,52),"Inventaire\nI / Y",button))OpenInventory();
-        if(GUI.Button(new Rect(start+551,h-89,153,52),"Lendemain\nN",button))view=View.Sleep;
+        if(GUI.Button(new Rect(start+237,h-89,112,52),"Roue\nTab / X",button)){originalTool=(int)ActiveTool;wheelCursor=originalTool;wheelMouseReady=false;view=View.Wheel;}
+        if(GUI.Button(new Rect(start+355,h-89,112,52),"Inventaire\nI / Y",button))OpenInventory();
+        if(GUI.Button(new Rect(start+473,h-89,112,52),"Construire\nG",button))OpenDecoration();
+        if(GUI.Button(new Rect(start+591,h-89,113,52),"Lendemain\nN",button))view=View.Sleep;
         GUI.enabled=enabled;
         if(view==View.Play)
         {
@@ -304,7 +310,7 @@ public sealed partial class FarmPoc : MonoBehaviour
         if(GUI.Button(new Rect(r.x+128,r.y+386,38,38),"−",button))ChangeQuantity(-1);
         GUI.Label(new Rect(r.x+172,r.y+391,55,29),quantity.ToString(),center);
         if(GUI.Button(new Rect(r.x+232,r.y+386,38,38),"+",button))ChangeQuantity(1);
-        string action=shop?(shopTab==0?"Acheter "+quantity:"Vendre "+quantity):id<3?"Équiper les graines":World.NearShop?"Vendre "+quantity:id<6?"Choisir pour la vente":"À vendre chez le marchand";
+        string action=shop?(shopTab==0?"Acheter "+quantity:"Vendre "+quantity):id<3?"Équiper les graines":World.NearShop?"Vendre "+quantity:id<6?"Choisir pour la vente":!World.Indoors&&FarmCrafting.Recipes[id-6].Placeable?"Placer dans la ferme":"À vendre chez le marchand";
         if(GUI.Button(new Rect(r.x+330,r.y+382,446,48),action+"  ·  A / E",selected)){if(shop)ShopAction();else InventoryAction();}
         GUI.Label(new Rect(r.x+24,r.y+448,752,26),"Stick / flèches : naviguer   ·   LB/RB ou Page↑/↓ : onglets   ·   LT/RT ou −/+ : quantité",small);
     }

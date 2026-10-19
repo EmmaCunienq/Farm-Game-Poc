@@ -15,10 +15,6 @@ public sealed partial class FarmPoc
     View beforePause;
     int pauseCursor,appearanceCategory;
     FarmAppearance appearanceDraft;
-    int decorTab,decorKind,decorRotation,decorX=3,decorZ=3,movingFurniture=-1;
-    bool decorSelecting;
-    string decorMessage="Choisis un meuble, puis une case et valide pour le poser.";
-    static readonly string[] furnitureLabels={"Lit","Tab.","Cha.","Can.","Bib.","Pl.","Lam.","Tap."};
 
     void InitializeSave()
     {
@@ -65,7 +61,7 @@ public sealed partial class FarmPoc
         if(view==View.Wheel)ActiveTool=(FarmTool)originalTool;
         if(view==View.Style)World.ApplyAppearance(Appearance);
         if(view==View.Craft)StopCrafting();
-        if(view==View.Decoration){movingFurniture=-1;if(saveDecoration)SaveGame(false);}
+        if(view==View.Decoration){BackToCatalog();if(saveDecoration)SaveGame(false);}
         view=View.Play;
     }
     void OpenPause()
@@ -164,90 +160,5 @@ public sealed partial class FarmPoc
         }
         Part(2,-FarmArt.AvatarLegSpacing,0,FarmArt.AvatarLegHeight);Part(3,FarmArt.AvatarLegSpacing,0,FarmArt.AvatarLegHeight);
         Part(1,0,FarmArt.AvatarTorsoBase,FarmArt.AvatarTorsoHeight);Part(0,0,FarmArt.AvatarHeadBase,FarmArt.AvatarHeadHeight);
-    }
-
-    void OpenDecoration(){view=View.Decoration;decorTab=0;movingFurniture=-1;decorSelecting=false;decorMessage="Choisis un meuble, puis une case et valide pour le poser.";}
-    FarmFurniture Candidate()=>new(){Kind=decorKind,X=decorX,Z=decorZ,Rotation=decorRotation};
-    void ProcessDecoration(FarmInputFrame f)
-    {
-        if(f.Tab!=0){decorTab=(decorTab+f.Tab+3)%3;movingFurniture=-1;}
-        if(decorTab==0)
-        {
-            decorX=Mathf.Clamp(decorX+f.Navigate.x,0,FarmHome.Width-1);decorZ=Mathf.Clamp(decorZ+f.Navigate.y,0,FarmHome.Depth-1);
-            if(f.Quantity!=0){movingFurniture=-1;decorSelecting=false;decorKind=(decorKind+f.Quantity+FarmHome.Catalog.Length)%FarmHome.Catalog.Length;}
-            if(f.Wheel){decorSelecting=!decorSelecting;movingFurniture=-1;}
-            if(f.Inventory||f.Rotate)decorRotation=(decorRotation+1)%4;
-            if(f.Delete)RemoveFurniture();
-            if(f.Confirm){if(decorSelecting)PickFurniture();else PlaceFurniture();}
-        }
-        else
-        {
-            int change=f.Navigate.x!=0?f.Navigate.x:-f.Navigate.y;
-            if(change==0)change=f.Quantity;
-            if(change!=0){if(decorTab==1)Home.Wallpaper=(Home.Wallpaper+change+3)%3;else Home.Floor=(Home.Floor+change+3)%3;World.ApplyHome(Home);}
-        }
-    }
-    void PickFurniture()
-    {
-        int index=Home.At(decorX,decorZ);
-        if(index<0){decorMessage="Choisis une case contenant un meuble.";return;}
-        var item=Home.Furniture[index];movingFurniture=index;decorKind=item.Kind;decorRotation=item.Rotation;decorX=item.X;decorZ=item.Z;decorSelecting=false;
-        decorMessage="Choisis la nouvelle place. Le meuble reste en place jusqu'à validation.";
-    }
-    void PlaceFurniture()
-    {
-        var item=Candidate();
-        if(World.OccupiedByPlayer(item)){decorMessage="Le personnage se trouve ici. Ferme le menu et déplace-toi.";return;}
-        if(Home.Furniture.Count>=100&&movingFurniture<0){decorMessage="La pièce contient déjà 100 décorations.";return;}
-        if(Home.Place(item,movingFurniture,out decorMessage)){movingFurniture=-1;World.ApplyHome(Home);}
-    }
-    void RemoveFurniture()
-    {
-        int index=movingFurniture>=0?movingFurniture:Home.At(decorX,decorZ);
-        if(index<0){decorMessage="Sélectionne un meuble à retirer.";return;}
-        Home.Furniture.RemoveAt(index);movingFurniture=-1;World.ApplyHome(Home);decorMessage="Meuble rangé dans le catalogue.";
-    }
-    void DrawDecoration(float w,float h)
-    {
-        var r=new Rect(w/2-470,h/2-285,940,570);GUI.Box(r,GUIContent.none,panel);
-        GUI.Label(new Rect(r.x+24,r.y+18,790,34),"MA MAISON · DÉCORATION",title);
-        if(GUI.Button(new Rect(r.xMax-62,r.y+18,38,30),"×",button)){CloseView();return;}
-        string[] tabs={"Meubles & objets","Papier peint","Sol"};
-        for(int i=0;i<3;i++)if(GUI.Button(new Rect(r.x+24+i*298,r.y+64,288,37),tabs[i],decorTab==i?selected:button)){decorTab=i;movingFurniture=-1;}
-        if(decorTab==0)
-        {
-            const float cell=47;float gx=r.x+28,gy=r.y+120;
-            var candidate=Candidate();bool valid=Home.CanPlace(candidate,movingFurniture,out _)&&!World.OccupiedByPlayer(candidate);
-            for(int z=0;z<FarmHome.Depth;z++)for(int x=0;x<FarmHome.Width;x++)
-            {
-                var rect=new Rect(gx+x*cell,gy+(FarmHome.Depth-1-z)*cell,cell-3,cell-3);
-                int at=Home.At(x,z);string label=FarmHome.Reserved(x,z)?"·":at<0?"":furnitureLabels[Home.Furniture[at].Kind];
-                Color color=GUI.color;
-                if(!decorSelecting&&candidate.Contains(x,z))GUI.color=valid?new Color(.67f,1,.69f):new Color(1,.55f,.45f);
-                if(GUI.Button(rect,label,x==decorX&&z==decorZ?selected:button)){decorX=x;decorZ=z;}
-                GUI.color=color;
-            }
-            GUI.Label(new Rect(gx,gy+338,440,23),"Entrée en bas · Armoire à gauche · Coffre à droite",small);
-            for(int i=0;i<FarmHome.Catalog.Length;i++)
-            {
-                var def=FarmHome.Catalog[i];
-                if(GUI.Button(new Rect(r.x+480+(i%2)*212,r.y+120+(i/2)*52,202,44),def.Name+" · "+def.Width+"×"+def.Depth,i==decorKind&&!decorSelecting?selected:button))
-                {decorKind=i;movingFurniture=-1;decorSelecting=false;decorRotation=0;}
-            }
-            if(GUI.Button(new Rect(r.x+480,r.y+342,414,38),"Tourner · R / Y  ("+(decorRotation*90)+"°)",button))decorRotation=(decorRotation+1)%4;
-            if(GUI.Button(new Rect(r.x+480,r.y+390,202,38),decorSelecting?"Choisir un meuble":"Sélectionner · Tab / X",decorSelecting?selected:button)){decorSelecting=!decorSelecting;movingFurniture=-1;}
-            if(GUI.Button(new Rect(r.x+692,r.y+390,202,38),"Retirer · Suppr / R3",button))RemoveFurniture();
-            if(GUI.Button(new Rect(r.x+480,r.y+438,414,42),decorSelecting?"Déplacer le meuble · E / A":movingFurniture>=0?"Valider le déplacement · E / A":"Poser le meuble · E / A",selected)){if(decorSelecting)PickFurniture();else PlaceFurniture();}
-            GUI.Label(new Rect(r.x+24,r.y+488,870,32),decorMessage,small);
-        }
-        else
-        {
-            var options=decorTab==1?FarmHome.Wallpapers:FarmHome.Floors;int choice=decorTab==1?Home.Wallpaper:Home.Floor;
-            for(int i=0;i<options.Length;i++)if(GUI.Button(new Rect(r.x+45+i*285,r.y+150,270,95),options[i],choice==i?selected:button))
-            {if(decorTab==1)Home.Wallpaper=i;else Home.Floor=i;World.ApplyHome(Home);}
-            GUI.Label(new Rect(r.x+45,r.y+290,840,90),"Le revêtement est appliqué à toute la pièce.\nFerme le menu pour voir le résultat et te promener chez toi.",text);
-        }
-        if(GUI.Button(new Rect(r.x+690,r.y+522,204,33),"Terminer · Échap / B",button))CloseView();
-        GUI.Label(new Rect(r.x+24,r.y+530,660,25),"Flèches / stick : case · −/+ ou LT/RT : meuble · Page↑/↓ ou LB/RB : onglet",small);
     }
 }
