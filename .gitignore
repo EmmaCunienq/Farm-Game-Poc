@@ -17,3 +17,6 @@
 *.slnx
 *.pidb
 *.user
+
+# Builds du jeu : publiés en release GitHub, pas dans le dépôt
+/Build du prototype/
